@@ -44,6 +44,7 @@ class AIAgentUI(
         self.approve_btn.clicked.connect(self.on_approve_code)
         self.reject_btn.clicked.connect(self.on_reject_code)
         self.save_code_btn.clicked.connect(self.on_save_pending_code)
+        self.copy_btn.clicked.connect(self.on_copy_pending_code)
         self.manage_memory_btn.clicked.connect(self.on_manage_memory)
         self.load_models()
         self.refresh_session_list()
@@ -216,17 +217,21 @@ class AIAgentUI(
         self.pending_code = None
 
         import hou
+        import traceback
 
         print("\n--- Agent Execution Started ---")
-        with hou.undos.group("Agent Execution"):
-            local_dict = {"hou": hou}
-            exec(code, local_dict)
+        try:
+            with hou.undos.group("Agent Execution"):
+                local_dict = {"hou": hou}
+                exec(code, local_dict)
 
-        print("--- Agent Execution Success ---\n")
-        self.core.append_to_history(
-            "user",
-            "I approved and ran the proposed code. It executed successfully.",
-        )
+            print("--- Agent Execution Success ---\n")
+            self.core.append_to_history(
+                "user",
+                "I approved and ran the proposed code. It executed successfully.",
+            )
+        except Exception:
+            print(f"--- Agent Execution Failed ---\n{traceback.format_exc()}")
 
         self.refresh_session_list()
         self.request_render()
@@ -259,6 +264,20 @@ class AIAgentUI(
     def _reset_save_btn(self):
         self.save_code_btn.setText("🌟 Save to Memory")
         self.save_code_btn.setEnabled(True)
+
+    def on_copy_pending_code(self):
+        if not hasattr(self, "pending_code") or not self.pending_code:
+            return
+        import hou
+        try:
+            hou.ui.copyTextToClipboard(self.pending_code)
+        except Exception:
+            QtWidgets.QApplication.clipboard().setText(self.pending_code)
+        self.copy_btn.setText("✅ Copied!")
+        QtCore.QTimer.singleShot(2000, self._reset_copy_btn)
+
+    def _reset_copy_btn(self):
+        self.copy_btn.setText("📋 Copy Code")
 
     def on_reject_code(self):
         self.review_panel.hide()

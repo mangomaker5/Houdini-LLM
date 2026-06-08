@@ -85,7 +85,6 @@ class UIBuilderMixin:
         top_bar.addStretch()
         top_bar.addWidget(self.settings_btn)
         self.chat_display = ChatTextBrowser()
-        self.chat_display.custom_link_clicked.connect(self.handle_link_click)
         self.chat_display.document().setDefaultStyleSheet("")
         # Context Progress Bar (compact, left-aligned)
         ctx_bar = QtWidgets.QHBoxLayout()
@@ -202,6 +201,12 @@ class UIBuilderMixin:
         )
         self.save_code_btn.setCursor(QtCore.Qt.PointingHandCursor)
 
+        self.copy_btn = QtWidgets.QPushButton("📋 Copy Code")
+        self.copy_btn.setStyleSheet(
+            "QPushButton { background-color: #444444; color: #dfdfdf; font-weight: bold; padding: 5px; border-radius: 4px; }"
+        )
+        self.copy_btn.setCursor(QtCore.Qt.PointingHandCursor)
+
         self.reject_btn = QtWidgets.QPushButton("❌ Reject")
         self.reject_btn.setStyleSheet(
             "QPushButton { background-color: #ff4a4a; color: white; font-weight: bold; padding: 5px; border-radius: 4px; }"
@@ -210,6 +215,7 @@ class UIBuilderMixin:
 
         btn_layout.addStretch()
         btn_layout.addWidget(self.save_code_btn)
+        btn_layout.addWidget(self.copy_btn)
         btn_layout.addWidget(self.approve_btn)
         btn_layout.addWidget(self.reject_btn)
 

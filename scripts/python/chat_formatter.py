@@ -2,15 +2,21 @@ import re
 
 
 def format_markdown_to_html(text):
+    if text is None:
+        return ""
+    text = str(text)
     text = text.replace("<", "&lt;").replace(">", "&gt;")
 
-    def format_code_block(match):
-        code = match.group(1).strip()
-        return f"""
+    blocks = []
+
+    def save_generic_block(match):
+        code = match.group(2).strip()
+        lang = match.group(1).strip().upper() if match.group(1) else "CODE"
+        html = f'''
         <table width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#1e1e1e" style="margin-top: 15px; margin-bottom: 15px; border-radius: 6px;">
             <tr>
                 <td bgcolor="#2b2b2b" style="padding: 5px 10px; border-bottom: 1px solid #444444;">
-                    <div style="color: #aaaaaa; font-size: 12px; font-weight: bold;">PYTHON</div>
+                    <div style="color: #aaaaaa; font-size: 12px; font-weight: bold;">{lang}</div>
                 </td>
             </tr>
             <tr>
@@ -19,27 +25,41 @@ def format_markdown_to_html(text):
                 </td>
             </tr>
         </table>
-        """
+        '''
+        blocks.append(html)
+        return f"___BLOCK_{len(blocks)-1}___"
 
+    # Match all code blocks: ```language ... ```
     text = re.sub(
-        r"```python\n?(.*?)(?:```|$)",
-        format_code_block,
+        r"```(\w*)\n?(.*?)(?:```|$)",
+        save_generic_block,
         text,
         flags=re.DOTALL | re.IGNORECASE,
     )
 
+    # Now it is safe to replace newlines
     text = text.replace("\n", "<br/>")
 
+    # Format Tool Execution tags
     text = re.sub(
         r"(?:<br/>\s*)*___TOOL_EXEC_(.*?)___(?:<br/>\s*)*",
         r"<div style='color: #888888; font-style: italic; font-size: 11px; margin: 4px 0px; background-color: #2b2b2b; padding: 2px 8px; border-radius: 4px; display: inline-block;'>⚙ Executing tool: <b>\1</b></div><br/>",
         text,
     )
 
+    # Restore the code blocks
+    for i, html in enumerate(blocks):
+        text = text.replace(f"___BLOCK_{i}___", html)
+
     return text
 
 
 def build_bubble(role, text, show_header=True):
+    if text is None:
+        text = ""
+    else:
+        text = str(text)
+
     # Special Check for Model Change system message
     if role == "System" and "Switched model to" in text:
         return f"""
