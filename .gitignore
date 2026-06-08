@@ -32,3 +32,8 @@ backup/
 .DS_Store
 Thumbs.db
 docs/*
+
+# Linting & Testing Caches
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
