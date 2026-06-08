@@ -1,4 +1,4 @@
-from PySide6 import QtWidgets, QtCore, QtGui
+from PySide6 import QtGui
 from settings_dialog import SettingsDialog
 
 
@@ -15,39 +15,6 @@ class UIActionsMixin:
         cursor.movePosition(QtGui.QTextCursor.End)
         self.text_input.setTextCursor(cursor)
         self.cmd_popup.hide()
-
-    # --- Link Actions ---
-    def handle_link_click(self, url_str):
-        if url_str.startswith("copy_code:"):
-            block_id = url_str[len("copy_code:") :].strip("/")
-            if block_id in self.code_blocks_store:
-                try:
-                    import hou
-
-                    hou.ui.copyTextToClipboard(self.code_blocks_store[block_id])
-                except Exception:
-                    QtWidgets.QApplication.clipboard().setText(
-                        self.code_blocks_store[block_id]
-                    )
-                self.action_states[url_str] = "&nbsp;✅ Copied!&nbsp;"
-                self.request_render()
-                QtCore.QTimer.singleShot(2000, lambda: self._reset_action(url_str))
-        elif url_str.startswith("run_code:"):
-            block_id = url_str[len("run_code:") :].strip("/")
-            if block_id in self.code_blocks_store:
-                success, msg = self.context.execute_code_block(
-                    self.code_blocks_store[block_id]
-                )
-                self.action_states[url_str] = (
-                    "&nbsp;✅ Success!&nbsp;" if success else "&nbsp;❌ Error!&nbsp;"
-                )
-                self.request_render()
-                QtCore.QTimer.singleShot(2500, lambda: self._reset_action(url_str))
-
-    def _reset_action(self, action_id):
-        if action_id in self.action_states:
-            del self.action_states[action_id]
-            self.request_render()
 
     # --- Model Handling ---
     def load_models(self):

@@ -37,7 +37,7 @@ class UIRenderMixin:
         """Rebuild the chat display HTML from DB + streaming state."""
         self.code_blocks_store = {}
         html_parts = []
-        for msg in self.core.get_chat_history():
+        for i, msg in enumerate(self.core.get_chat_history()):
             if msg["role"] == "user":
                 role = "User"
             elif msg["role"] == "system":
@@ -46,16 +46,24 @@ class UIRenderMixin:
                 role = "Agent (MCP)"
             else:
                 role = "Agent"
+
+            # Elegantly hide the header if the previous message was from the same role
+            show_header = True
+            if i > 0 and self.core.get_chat_history()[i - 1]["role"] == msg["role"]:
+                show_header = False
+
             html_parts.append(
                 build_bubble(
-                    role, msg["content"], self.code_blocks_store, self.action_states
+                    role,
+                    msg["content"],
+                    show_header=show_header,
                 )
             )
 
         if self.current_agent_response is not None:
             is_thinking = self.current_agent_response.startswith(
                 "Thinking"
-            ) or self.current_agent_response.startswith("⚡ Agent Mode MCP Working")
+            ) or self.current_agent_response.startswith("⚡ Agent Mode Auto Working")
             s_role = (
                 "Thinking"
                 if is_thinking
@@ -70,8 +78,6 @@ class UIRenderMixin:
                 build_bubble(
                     s_role,
                     self.current_agent_response,
-                    self.code_blocks_store,
-                    self.action_states,
                 )
             )
         full_html = f"<body style='background-color: #333333; color: #dfdfdf; font-family: sans-serif; font-size: 14px;'>{''.join(html_parts)}</body>"

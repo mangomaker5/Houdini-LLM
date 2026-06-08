@@ -39,8 +39,8 @@ class AIAgentCore:
                     config = json.load(f)
                     if not self.api_key:
                         self.api_key = config.get("api_key", "")
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"Error loading config: {e}")
 
     def delete_config(self):
         self.api_key = ""
@@ -48,15 +48,15 @@ class AIAgentCore:
         if os.path.exists(self.config_file):
             try:
                 os.remove(self.config_file)
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"Error deleting config: {e}")
 
     def save_config(self):
         try:
             with open(self.config_file, "w") as f:
                 json.dump({"api_key": self.api_key}, f)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Error saving config: {e}")
 
     def set_api_key(self, key):
         self.api_key = key
@@ -123,8 +123,8 @@ class AIAgentCore:
                 if "data" in result:
                     models = [m["id"] for m in result["data"]]
                     return sorted(models)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Error fetching models: {e}")
         return ["deepseek/deepseek-v4-pro"]
 
     def _prepare_request_history(self, system_context):
@@ -159,6 +159,25 @@ class AIAgentCore:
 
         return request_history
 
+    def generate_embedding(self, text):
+        """Generates a 1536-dimensional embedding using OpenRouter's text-embedding-3-small."""
+        if not self.api_key:
+            raise ValueError("No OpenRouter API key provided.")
+
+        url = "https://openrouter.ai/api/v1/embeddings"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        data = {"input": text, "model": "openai/text-embedding-3-small"}
+
+        req = urllib.request.Request(
+            url, data=json.dumps(data).encode("utf-8"), headers=headers, method="POST"
+        )
+        with urllib.request.urlopen(req) as response:
+            res = json.loads(response.read().decode("utf-8"))
+            return res["data"][0]["embedding"]
+
     def generate_response_sync(self, user_message, system_context=""):
         """Synchronous version for summarization background tasks."""
         if not self.api_key:
@@ -192,7 +211,12 @@ class AIAgentCore:
             return f"Error: {str(e)}"
 
     def generate_response_stream(
-        self, user_message, system_context="", agent_mode=False, check_cancelled=None
+        self,
+        user_message,
+        system_context="",
+        agent_mode=False,
+        check_cancelled=None,
+        **kwargs,
     ):
         if not self.api_key:
             yield "Error: Please set your OpenRouter API key in settings."
@@ -205,6 +229,11 @@ class AIAgentCore:
             "Content-Type": "application/json",
         }
 
+        if agent_mode:
+            import mcp_tools
+
+        complete_response = ""
+
         # Loop to support multiple tool call iterations
         while True:
             if check_cancelled and check_cancelled():
@@ -212,8 +241,6 @@ class AIAgentCore:
 
             data = {"model": self.model, "messages": request_history, "stream": True}
             if agent_mode:
-                import mcp_tools
-
                 data["tools"] = mcp_tools.AGENT_TOOLS_SCHEMA
 
             full_reply = ""
@@ -249,6 +276,7 @@ class AIAgentCore:
                                     content = delta.get("content", "")
                                     if content:
                                         full_reply += content
+                                        complete_response += content
                                         yield content
 
                                     # Tool calls
@@ -276,8 +304,8 @@ class AIAgentCore:
                                                     tool_calls_buffer[idx]["function"][
                                                         "arguments"
                                                     ] += f["arguments"]
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                print(f"Error parsing chunk: {e}")
 
                 if check_cancelled and check_cancelled():
                     break
@@ -291,17 +319,29 @@ class AIAgentCore:
                     }
                     request_history.append(assistant_msg)
 
-                    import mcp_tools
-
                     for tc in tool_calls_buffer.values():
                         if check_cancelled and check_cancelled():
                             break
                         f_name = tc["function"]["name"]
                         f_args = tc["function"]["arguments"]
 
-                        yield f"\n\n*⚙ Executing tool: `{f_name}`...*\n\n"
+                        tool_msg = f"\n___TOOL_EXEC_{f_name}___\n"
+                        complete_response += tool_msg
+                        yield tool_msg
 
                         result = mcp_tools.execute_tool(f_name, f_args)
+
+                        if (
+                            f_name == "propose_code_change"
+                            and "on_code_proposed" in kwargs
+                        ):
+                            try:
+                                args_dict = json.loads(f_args)
+                                proposed_code = args_dict.get("python_code", "")
+                                if proposed_code:
+                                    kwargs["on_code_proposed"](proposed_code)
+                            except Exception as e:
+                                print(f"Error extracting proposed code: {e}")
 
                         request_history.append(
                             {
@@ -316,20 +356,22 @@ class AIAgentCore:
                     continue
 
                 # If no tool calls, we are completely done
-                if full_reply:
+                if complete_response:
                     role_to_save = "assistant_mcp" if agent_mode else "assistant"
-                    self.append_to_history(role_to_save, full_reply)
+                    self.append_to_history(role_to_save, complete_response)
                 break
 
             except urllib.error.HTTPError as e:
                 error_msg = e.read().decode("utf-8")
                 msg = f"\nAPI Error ({e.code}): {error_msg}"
+                print(f"Network Error: {msg}")
                 role_to_save = "assistant_mcp" if agent_mode else "assistant"
                 self.append_to_history(role_to_save, msg)
                 yield msg
                 break
             except Exception as e:
                 msg = f"\nConnection Error: {str(e)}"
+                print(f"Network Error: {msg}")
                 role_to_save = "assistant_mcp" if agent_mode else "assistant"
                 self.append_to_history(role_to_save, msg)
                 yield msg

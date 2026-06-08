@@ -11,6 +11,7 @@ from ui_builder import UIBuilderMixin
 from ui_session import UISessionMixin
 from ui_render import UIRenderMixin
 from ui_actions import UIActionsMixin
+from personas import get_persona_prompt
 
 
 class AIAgentUI(
@@ -39,9 +40,23 @@ class AIAgentUI(
         self.current_model_display = ""
         self.setStyleSheet(GLOBAL_STYLE)
         self.init_ui()
+        self.persona_combo.currentIndexChanged.connect(self.on_persona_changed)
+        self.approve_btn.clicked.connect(self.on_approve_code)
+        self.reject_btn.clicked.connect(self.on_reject_code)
+        self.save_code_btn.clicked.connect(self.on_save_pending_code)
+        self.manage_memory_btn.clicked.connect(self.on_manage_memory)
         self.load_models()
         self.refresh_session_list()
         self.request_render()
+
+    def on_persona_changed(self, index):
+        if self.core.session_id and len(self.core.get_chat_history()) > 0:
+            persona_name = self.persona_combo.currentText()
+            warning_msg = f"Switched persona to: {persona_name}"
+            # Send as a system message to show as warning
+            self.core.append_to_history("system", warning_msg)
+            self.refresh_session_list()
+            self.request_render()
 
     def eventFilter(self, obj, event):
         if obj == self.text_input and event.type() == QtCore.QEvent.KeyPress:
@@ -134,12 +149,12 @@ class AIAgentUI(
         self.refresh_session_list()
 
         hou_context = self.context.get_selected_nodes_context()
-        sys_prompt = self.context.generate_system_prompt()
+        sys_prompt = get_persona_prompt(self.persona_combo.currentText())
         full_sys_context = sys_prompt + "\n\n" + hou_context
 
         agent_mode_active = self.agent_mode_toggle.isChecked()
         self.thinking_base_text = (
-            "⚡ Agent Mode MCP Working" if agent_mode_active else "Thinking"
+            "⚡ Agent Mode Auto Working" if agent_mode_active else "Thinking"
         )
         self.current_agent_response = self.thinking_base_text + "..."
         self.first_chunk_received = False
@@ -153,6 +168,7 @@ class AIAgentUI(
         )
         self.worker.chunk_received.connect(self.on_chunk_received)
         self.worker.finished_response.connect(self.on_response_finished)
+        self.worker.code_proposed.connect(self.on_code_proposed)
         self.worker.start()
 
     def animate_thinking(self):
@@ -185,6 +201,110 @@ class AIAgentUI(
         self.text_input.setFocus()
         self.refresh_session_list()
         self._perform_render()
+
+    def on_code_proposed(self, code):
+        if code:
+            self.review_code.setPlainText(code)
+            self.review_panel.show()
+            self.pending_code = code
+
+    def on_approve_code(self):
+        if not hasattr(self, "pending_code") or not self.pending_code:
+            return
+        self.review_panel.hide()
+        code = self.pending_code
+        self.pending_code = None
+
+        import hou
+
+        print("\n--- Agent Execution Started ---")
+        with hou.undos.group("Agent Execution"):
+            local_dict = {"hou": hou}
+            exec(code, local_dict)
+
+        print("--- Agent Execution Success ---\n")
+        self.core.append_to_history(
+            "user",
+            "I approved and ran the proposed code. It executed successfully.",
+        )
+
+        self.refresh_session_list()
+        self.request_render()
+
+    def on_save_pending_code(self):
+        if not hasattr(self, "pending_code") or not self.pending_code:
+            return
+        from workers import ReflectionWorker
+
+        code = self.pending_code
+        self.save_code_btn.setText("⏳ Saving...")
+        self.save_code_btn.setEnabled(False)
+        worker = ReflectionWorker(self.core, code, "save_btn", self)
+        worker.finished_reflection.connect(self.on_reflection_finished)
+        if not hasattr(self, "reflection_workers"):
+            self.reflection_workers = []
+        self.reflection_workers.append(worker)
+        worker.start()
+
+    def on_reflection_finished(self, url_str, success, message):
+        worker = self.sender()
+        if hasattr(self, "reflection_workers") and worker in self.reflection_workers:
+            self.reflection_workers.remove(worker)
+        if success:
+            self.save_code_btn.setText("✅ Saved!")
+        else:
+            self.save_code_btn.setText(f"❌ Failed: {message}")
+        QtCore.QTimer.singleShot(3000, self._reset_save_btn)
+
+    def _reset_save_btn(self):
+        self.save_code_btn.setText("🌟 Save to Memory")
+        self.save_code_btn.setEnabled(True)
+
+    def on_reject_code(self):
+        self.review_panel.hide()
+        self.pending_code = None
+        self.core.append_to_history(
+            "user",
+            "I rejected the proposed code. Please revise it or ask for clarification.",
+        )
+        self.refresh_session_list()
+        self.request_render()
+
+    def on_manage_memory(self):
+        from database import get_all_learned_skills, delete_learned_skill
+
+        dialog = QtWidgets.QDialog(self)
+        dialog.setWindowTitle("Manage Memory")
+        dialog.resize(600, 400)
+        layout = QtWidgets.QVBoxLayout(dialog)
+
+        list_widget = QtWidgets.QListWidget()
+        skills = get_all_learned_skills(self.core.db_path)
+        for skill in skills:
+            item = QtWidgets.QListWidgetItem(f"[{skill['id']}] {skill['description']}")
+            item.setData(QtCore.Qt.UserRole, skill["id"])
+            list_widget.addItem(item)
+
+        layout.addWidget(list_widget)
+
+        btn_layout = QtWidgets.QHBoxLayout()
+        delete_btn = QtWidgets.QPushButton("Delete Selected")
+        close_btn = QtWidgets.QPushButton("Close")
+        btn_layout.addWidget(delete_btn)
+        btn_layout.addWidget(close_btn)
+        layout.addLayout(btn_layout)
+
+        def on_delete():
+            item = list_widget.currentItem()
+            if item:
+                skill_id = item.data(QtCore.Qt.UserRole)
+                delete_learned_skill(self.core.db_path, skill_id)
+                list_widget.takeItem(list_widget.row(item))
+
+        delete_btn.clicked.connect(on_delete)
+        close_btn.clicked.connect(dialog.accept)
+
+        dialog.exec()
 
 
 def run_panel():

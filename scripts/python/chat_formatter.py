@@ -1,62 +1,16 @@
 import re
 
 
-def format_markdown_to_html(text, code_blocks_store, action_states):
+def format_markdown_to_html(text):
     text = text.replace("<", "&lt;").replace(">", "&gt;")
 
-    code_blocks = []
-
-    def save_code_block(match):
+    def format_code_block(match):
         code = match.group(1).strip()
-        code_blocks.append(code)
-        return f"___CODE_BLOCK_{len(code_blocks) - 1}___"
-
-    text = re.sub(
-        r"```(?:python)?\n?(.*?)(?:```|$)", save_code_block, text, flags=re.DOTALL
-    )
-    text = text.replace("\n", "<br/>")
-
-    for i, code in enumerate(code_blocks):
-        block_id = f"block_{len(code_blocks_store)}"
-        code_blocks_store[block_id] = code
-
-        run_text = action_states.get(f"run_code:{block_id}", "&nbsp;▶ Run Code&nbsp;")
-        copy_text = action_states.get(
-            f"copy_code:{block_id}", "&nbsp;📋 Copy Code&nbsp;"
-        )
-
-        run_color = (
-            "#ffffff" if ("Success" in run_text or "Error" in run_text) else "#19c37d"
-        )
-        run_bg = (
-            "#19c37d"
-            if "Success" in run_text
-            else ("#ff4a4a" if "Error" in run_text else "#444444")
-        )
-        copy_color = "#19c37d" if "Copied" in copy_text else "#dfdfdf"
-
-        html = f'''
+        return f"""
         <table width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#1e1e1e" style="margin-top: 15px; margin-bottom: 15px; border-radius: 6px;">
             <tr>
                 <td bgcolor="#2b2b2b" style="padding: 5px 10px; border-bottom: 1px solid #444444;">
-                    <table width="100%" border="0" cellpadding="0" cellspacing="0">
-                        <tr>
-                            <td align="left" style="color: #aaaaaa; font-size: 12px; font-weight: bold;">PYTHON</td>
-                            <td align="right" style="font-size: 11px; font-weight: bold;">
-                                <table border="0" cellpadding="4" cellspacing="0">
-                                    <tr>
-                                        <td bgcolor="{run_bg}" style="border-radius: 4px;">
-                                            <a href="run_code:{block_id}" style="color: {run_color}; text-decoration: none;">{run_text}</a>
-                                        </td>
-                                        <td width="5"></td>
-                                        <td bgcolor="#444444" style="border-radius: 4px;">
-                                            <a href="copy_code:{block_id}" style="color: {copy_color}; text-decoration: none;">{copy_text}</a>
-                                        </td>
-                                    </tr>
-                                </table>
-                            </td>
-                        </tr>
-                    </table>
+                    <div style="color: #aaaaaa; font-size: 12px; font-weight: bold;">PYTHON</div>
                 </td>
             </tr>
             <tr>
@@ -65,13 +19,27 @@ def format_markdown_to_html(text, code_blocks_store, action_states):
                 </td>
             </tr>
         </table>
-        '''
-        text = text.replace(f"___CODE_BLOCK_{i}___", html)
+        """
+
+    text = re.sub(
+        r"```python\n?(.*?)(?:```|$)",
+        format_code_block,
+        text,
+        flags=re.DOTALL | re.IGNORECASE,
+    )
+
+    text = text.replace("\n", "<br/>")
+
+    text = re.sub(
+        r"(?:<br/>\s*)*___TOOL_EXEC_(.*?)___(?:<br/>\s*)*",
+        r"<div style='color: #888888; font-style: italic; font-size: 11px; margin: 4px 0px; background-color: #2b2b2b; padding: 2px 8px; border-radius: 4px; display: inline-block;'>⚙ Executing tool: <b>\1</b></div><br/>",
+        text,
+    )
 
     return text
 
 
-def build_bubble(role, text, code_blocks_store, action_states):
+def build_bubble(role, text, show_header=True):
     # Special Check for Model Change system message
     if role == "System" and "Switched model to" in text:
         return f"""
@@ -85,8 +53,20 @@ def build_bubble(role, text, code_blocks_store, action_states):
             </tr>
         </table>
         """
+    elif role == "System" and "Switched persona to" in text:
+        return f"""
+        <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-top: 15px; margin-bottom: 15px;">
+            <tr>
+                <td align="center">
+                    <div style="border-left: 2px solid #f1c40f; padding-left: 10px; color: #f1c40f; font-size: 12px; font-weight: bold;">
+                        ⚠️ {text}
+                    </div>
+                </td>
+            </tr>
+        </table>
+        """
 
-    html_content = format_markdown_to_html(text, code_blocks_store, action_states)
+    html_content = format_markdown_to_html(text)
 
     if role == "User":
         return f"""
@@ -111,14 +91,20 @@ def build_bubble(role, text, code_blocks_store, action_states):
             title = "◆ HOUDINI-LLM"
             color = "#19c37d"
         else:
-            title = "⚡ Agent Mode MCP"
+            title = "⚡ Agent Mode Auto"
             color = "#f1c40f"
 
+        header_html = (
+            f'<div style="font-weight: bold; color: {color}; margin-bottom: 8px; font-size: 15px;">{title}</div>'
+            if show_header
+            else ""
+        )
+
         return f"""
-        <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-top: 15px; margin-bottom: 25px;">
+        <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-top: 5px; margin-bottom: 25px;">
             <tr>
                 <td align="left">
-                    <div style="font-weight: bold; color: {color}; margin-bottom: 8px; font-size: 15px;">{title}</div>
+                    {header_html}
                     <div style="color: #dfdfdf; line-height: 1.6; font-size: 14px;">
                         {html_content}
                     </div>

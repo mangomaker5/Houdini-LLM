@@ -22,17 +22,34 @@ AGENT_TOOLS_SCHEMA = [
     {
         "type": "function",
         "function": {
-            "name": "execute_houdini_python",
-            "description": "Executes python code within the Houdini session. Use this to construct nodes, set parameters, and modify the scene automatically. The execution is wrapped in an Undo block.",
+            "name": "propose_code_change",
+            "description": "Propose python code to be executed within the Houdini session. Use this to construct nodes, set parameters, and modify the scene automatically. The user will review the code before it runs.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "python_code": {
                         "type": "string",
-                        "description": "The valid Python hou module code to execute.",
+                        "description": "The valid Python hou module code to propose.",
                     }
                 },
                 "required": ["python_code"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_memory",
+            "description": "Searches the vector database for past successful code snippets related to the current query.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The search query to match against past skills.",
+                    }
+                },
+                "required": ["query"],
             },
         },
     },
@@ -77,23 +94,32 @@ def get_node_parameters(node_type):
         return json.dumps({"status": "error", "message": str(e)})
 
 
-def execute_houdini_python(python_code):
+def propose_code_change(python_code):
+    return json.dumps(
+        {
+            "status": "proposed",
+            "message": "Code proposed for user review.",
+            "code": python_code,
+        }
+    )
+
+
+def search_memory(query):
     try:
-        # Wrap the execution in an undo block so the user can hit Ctrl+Z
-        with hou.undos.group("Agent Execution"):
-            local_dict = {"hou": hou}
-            exec(python_code, local_dict)
-        return json.dumps(
-            {"status": "success", "message": "Code executed successfully."}
-        )
+        from core import AIAgentCore
+        from database import search_learned_skills
+
+        core = AIAgentCore()
+        embedding = core.generate_embedding(query)
+        results = search_learned_skills(core.db_path, embedding, limit=3)
+        if not results:
+            return json.dumps(
+                {"status": "success", "message": "No related skills found in memory."}
+            )
+
+        return json.dumps({"status": "success", "results": results})
     except Exception as e:
-        return json.dumps(
-            {
-                "status": "error",
-                "message": str(e),
-                "details": "The executed python code threw an exception.",
-            }
-        )
+        return json.dumps({"status": "error", "message": str(e)})
 
 
 def execute_tool(tool_name, arguments_json):
@@ -107,7 +133,9 @@ def execute_tool(tool_name, arguments_json):
 
     if tool_name == "get_node_parameters":
         return get_node_parameters(args.get("node_type", ""))
-    elif tool_name == "execute_houdini_python":
-        return execute_houdini_python(args.get("python_code", ""))
+    elif tool_name == "propose_code_change":
+        return propose_code_change(args.get("python_code", ""))
+    elif tool_name == "search_memory":
+        return search_memory(args.get("query", ""))
     else:
         return json.dumps({"status": "error", "message": f"Unknown tool: {tool_name}"})

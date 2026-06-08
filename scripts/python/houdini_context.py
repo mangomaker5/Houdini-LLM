@@ -1,6 +1,3 @@
-import re
-import traceback
-
 # Optional import to allow testing outside of Houdini
 try:
     import hou
@@ -44,48 +41,6 @@ class HoudiniContext:
                     except Exception:
                         pass
         return "\n".join(context_lines)
-
-    def extract_and_execute_code(self, response_text):
-        """
-        Parses python code blocks from the LLM response and executes them.
-        Returns a tuple (success: bool, output/error message: str).
-        """
-        if not HOUDINI_AVAILABLE:
-            return False, "Cannot execute code outside of Houdini."
-
-        # Find markdown python blocks
-        code_blocks = re.findall(r"```python\n(.*?)\n```", response_text, re.DOTALL)
-
-        if not code_blocks:
-            return False, "No Python code found to execute."
-
-        results = []
-        for i, code in enumerate(code_blocks):
-            try:
-                # We use exec() to run the code. We provide the 'hou' module in the globals dict
-                # so the script can use it.
-                exec_globals = {"hou": hou}
-                exec(code, exec_globals)
-                results.append(f"Block {i + 1} executed successfully.")
-            except Exception:
-                err_msg = traceback.format_exc()
-                results.append(f"Error in Block {i + 1}:\n{err_msg}")
-                return False, "\n".join(results)  # Stop on first error
-
-        return True, "\n".join(results)
-
-    def execute_code_block(self, code_text):
-        """Executes a single raw Python code string."""
-        if not HOUDINI_AVAILABLE:
-            return False, "Cannot execute code outside of Houdini."
-
-        try:
-            exec_globals = {"hou": hou}
-            exec(code_text, exec_globals)
-            return True, "Code executed successfully."
-        except Exception:
-            err_msg = traceback.format_exc()
-            return False, f"Execution Error:\n{err_msg}"
 
     def generate_system_prompt(self):
         """Generates the system instruction prompt for the LLM."""

@@ -1,10 +1,12 @@
 from PySide6 import QtCore
 import context_manager
+import urllib.error
 
 
 class AgentWorker(QtCore.QThread):
     chunk_received = QtCore.Signal(str)
     finished_response = QtCore.Signal()
+    code_proposed = QtCore.Signal(str)
 
     def __init__(
         self, core, user_message, system_context, agent_mode=False, parent=None
@@ -38,8 +40,62 @@ class AgentWorker(QtCore.QThread):
             self.system_context,
             self.agent_mode,
             self.check_cancelled,
+            on_code_proposed=self.code_proposed.emit,
         ):
             if self.is_cancelled:
                 break
             self.chunk_received.emit(chunk)
         self.finished_response.emit()
+
+
+class ReflectionWorker(QtCore.QThread):
+    finished_reflection = QtCore.Signal(str, bool, str)
+
+    def __init__(self, core, code_block, url_str, parent=None):
+        super().__init__(parent)
+        self.core = core
+        self.code_block = code_block
+        self.url_str = url_str
+
+    def run(self):
+        try:
+            # 1. Summarize the code to get a description
+            prompt = f"Analyze the following Houdini Python code and provide a single concise sentence describing exactly what it does. Do not include any other text.\n\nCode:\n{self.code_block}"
+            description = self.core.generate_response_sync(
+                prompt, system_context="You are a concise summarizer."
+            )
+
+            # 2. Generate Embedding
+            embedding = self.core.generate_embedding(description)
+            if not embedding:
+                self.finished_reflection.emit(
+                    self.url_str, False, "Failed to generate embedding"
+                )
+                return
+
+            # 3. Save to database
+            from database import save_learned_skill
+
+            success = save_learned_skill(
+                self.core.db_path, description, self.code_block, embedding
+            )
+            if not success:
+                self.finished_reflection.emit(
+                    self.url_str, False, "Vector DB extension not loaded"
+                )
+                return
+
+            self.finished_reflection.emit(self.url_str, True, "Saved successfully")
+        except urllib.error.HTTPError as e:
+            try:
+                error_body = e.read().decode("utf-8")
+                print(f"Network Error in Reflection: HTTP {e.code}: {error_body}")
+                self.finished_reflection.emit(
+                    self.url_str, False, f"HTTP {e.code}: {error_body}"
+                )
+            except Exception:
+                print(f"Network Error in Reflection: {str(e)}")
+                self.finished_reflection.emit(self.url_str, False, str(e))
+        except Exception as e:
+            print(f"Error in Reflection: {str(e)}")
+            self.finished_reflection.emit(self.url_str, False, str(e))

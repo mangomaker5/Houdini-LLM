@@ -30,7 +30,35 @@ class UIBuilderMixin:
         self.session_layout.setSpacing(2)
         self.session_layout.setAlignment(QtCore.Qt.AlignTop)
         self.session_scroll.setWidget(self.session_container)
+        self.manage_memory_btn = QtWidgets.QPushButton("🧠 Manage Memory")
+        self.manage_memory_btn.setObjectName("ManageMemoryButton")
+        self.manage_memory_btn.setCursor(QtCore.Qt.PointingHandCursor)
+        self.manage_memory_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3a3a3a;
+                border: none;
+                padding: 10px;
+                color: #dfdfdf;
+                font-weight: bold;
+                border-bottom: 1px solid #2b2b2b;
+            }
+            QPushButton:hover { background-color: #4a4a4a; }
+        """)
+
+        self.new_chat_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #19c37d;
+                border: none;
+                padding: 12px;
+                color: white;
+                font-weight: bold;
+                border-bottom: 1px solid #2b2b2b;
+            }
+            QPushButton:hover { background-color: #1ed78a; }
+        """)
+
         sidebar_layout.addWidget(self.new_chat_btn)
+        sidebar_layout.addWidget(self.manage_memory_btn)
         sidebar_layout.addWidget(self.session_scroll)
         # === Right Chat Area ===
         self.chat_area = QtWidgets.QWidget()
@@ -71,7 +99,7 @@ class UIBuilderMixin:
         self.context_progress.setFixedHeight(18)
         self.context_progress.setMaximumWidth(280)
 
-        self.agent_mode_toggle = QtWidgets.QCheckBox("⚡ Agent Mode MCP")
+        self.agent_mode_toggle = QtWidgets.QCheckBox("⚡ Agent Mode Auto")
         self.agent_mode_toggle.setObjectName("AgentModeToggle")
         self.agent_mode_toggle.setCursor(QtCore.Qt.PointingHandCursor)
         self.agent_mode_toggle.setToolTip(
@@ -81,7 +109,25 @@ class UIBuilderMixin:
             "QCheckBox { color: #f1c40f; font-weight: bold; }"
         )
 
+        self.persona_combo = QtWidgets.QComboBox()
+        self.persona_combo.setObjectName("PersonaCombo")
+        self.persona_combo.addItems(
+            ["General TD", "Arnold Expert", "Solaris/USD Expert", "FX Expert"]
+        )
+        self.persona_combo.setStyleSheet("""
+            QComboBox {
+                background-color: #2b2b2b;
+                color: #dfdfdf;
+                border: 1px solid #444444;
+                border-radius: 4px;
+                padding: 2px 10px;
+                font-size: 12px;
+            }
+        """)
+
         ctx_bar.addWidget(self.context_progress)
+        ctx_bar.addSpacing(10)
+        ctx_bar.addWidget(self.persona_combo)
         ctx_bar.addSpacing(10)
         ctx_bar.addWidget(self.agent_mode_toggle)
         ctx_bar.addStretch()
@@ -124,10 +170,59 @@ class UIBuilderMixin:
         self.warning_label.setWordWrap(True)
         self.warning_label.setAlignment(QtCore.Qt.AlignCenter)
 
+        # Review Panel
+        self.review_panel = QtWidgets.QFrame()
+        self.review_panel.setObjectName("ReviewPanel")
+        self.review_panel.setStyleSheet("""
+            QFrame#ReviewPanel {
+                background-color: #2b2b2b;
+                border: 1px solid #f1c40f;
+                border-radius: 4px;
+            }
+        """)
+        review_layout = QtWidgets.QVBoxLayout(self.review_panel)
+        self.review_label = QtWidgets.QLabel("Agent proposed code execution:")
+        self.review_label.setStyleSheet("color: #f1c40f; font-weight: bold;")
+        self.review_code = QtWidgets.QTextBrowser()
+        self.review_code.setMinimumHeight(150)
+        self.review_code.setStyleSheet(
+            "background-color: #1e1e1e; color: #cccccc; font-family: 'Consolas', monospace;"
+        )
+
+        btn_layout = QtWidgets.QHBoxLayout()
+        self.approve_btn = QtWidgets.QPushButton("✅ Approve & Run")
+        self.approve_btn.setStyleSheet(
+            "QPushButton { background-color: #19c37d; color: white; font-weight: bold; padding: 5px; border-radius: 4px; }"
+        )
+        self.approve_btn.setCursor(QtCore.Qt.PointingHandCursor)
+
+        self.save_code_btn = QtWidgets.QPushButton("🌟 Save to Memory")
+        self.save_code_btn.setStyleSheet(
+            "QPushButton { background-color: #f1c40f; color: #2b2b2b; font-weight: bold; padding: 5px; border-radius: 4px; }"
+        )
+        self.save_code_btn.setCursor(QtCore.Qt.PointingHandCursor)
+
+        self.reject_btn = QtWidgets.QPushButton("❌ Reject")
+        self.reject_btn.setStyleSheet(
+            "QPushButton { background-color: #ff4a4a; color: white; font-weight: bold; padding: 5px; border-radius: 4px; }"
+        )
+        self.reject_btn.setCursor(QtCore.Qt.PointingHandCursor)
+
+        btn_layout.addStretch()
+        btn_layout.addWidget(self.save_code_btn)
+        btn_layout.addWidget(self.approve_btn)
+        btn_layout.addWidget(self.reject_btn)
+
+        review_layout.addWidget(self.review_label)
+        review_layout.addWidget(self.review_code)
+        review_layout.addLayout(btn_layout)
+        self.review_panel.hide()
+
         chat_layout.addLayout(top_bar)
         chat_layout.addWidget(self.chat_display, stretch=1)
         chat_layout.addWidget(self.cmd_popup)
         chat_layout.addLayout(ctx_bar)
+        chat_layout.addWidget(self.review_panel)
         chat_layout.addWidget(self.warning_label)
         chat_layout.addWidget(input_container)
         splitter.addWidget(self.sidebar)
