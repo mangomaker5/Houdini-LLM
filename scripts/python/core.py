@@ -171,8 +171,6 @@ class AIAgentCore:
 
         headers = {
             "Authorization": f"Bearer {self.api_key}",
-            "HTTP-Referer": "https://github.com/sidefx/houdini-agent",
-            "X-Title": "Houdini TD Agent",
             "Content-Type": "application/json",
         }
 
@@ -204,8 +202,6 @@ class AIAgentCore:
 
         headers = {
             "Authorization": f"Bearer {self.api_key}",
-            "HTTP-Referer": "https://github.com/sidefx/houdini-agent",
-            "X-Title": "Houdini TD Agent",
             "Content-Type": "application/json",
         }
 
