@@ -104,7 +104,7 @@ class AIAgentCore:
                 messages = database.get_messages(self.db_path, self.session_id)
                 user_msgs = [m for m in messages if m["role"] == "user"]
                 if len(user_msgs) == 1: # Only rename if it's the very first user message
-                    new_title = content[:30] + ("..." if len(content) > 30 else "")
+                    new_title = content[:20] + ("..." if len(content) > 20 else "")
                     self.rename_session(self.session_id, new_title)
 
     def fetch_models(self):

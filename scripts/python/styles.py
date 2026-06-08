@@ -8,6 +8,14 @@ GLOBAL_STYLE = """
         font-family: "Segoe UI", "Helvetica Neue", Helvetica, sans-serif;
         font-size: 14px;
     }
+    QToolTip {
+        color: #dfdfdf;
+        background-color: #2b2b2b;
+        border: 1px solid #f1c40f;
+        padding: 5px;
+        font-size: 13px;
+        font-weight: bold;
+    }
     QTextBrowser {
         background-color: #333333;
         border: none;
@@ -161,6 +169,16 @@ GLOBAL_STYLE = """
     }
     QProgressBar#ContextProgressBar[danger="true"]::chunk {
         background-color: #ef4444;
+    }
+    
+    QLabel#WarningLabel {
+        color: #f59e0b;
+        background-color: #3f2a14;
+        border: 1px solid #f59e0b;
+        border-radius: 4px;
+        padding: 6px;
+        font-size: 12px;
+        font-weight: bold;
     }
     
     /* Session Item Widget styling */

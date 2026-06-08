@@ -51,7 +51,7 @@ class AIAgentUI(QtWidgets.QWidget):
         sidebar_layout = QtWidgets.QVBoxLayout(self.sidebar)
         sidebar_layout.setContentsMargins(0, 0, 0, 0)
         sidebar_layout.setSpacing(0)
-        self.new_chat_btn = QtWidgets.QPushButton("＋ New Chat")
+        self.new_chat_btn = QtWidgets.QPushButton("＋ New")
         self.new_chat_btn.setObjectName("NewChatButton")
         self.new_chat_btn.setCursor(QtCore.Qt.PointingHandCursor)
         self.new_chat_btn.clicked.connect(self.on_new_chat)
@@ -108,10 +108,11 @@ class AIAgentUI(QtWidgets.QWidget):
         self.context_progress.setFixedHeight(18)
         self.context_progress.setMaximumWidth(280)
         
-        self.agent_mode_toggle = QtWidgets.QCheckBox("⚡ Agent Mode")
+        self.agent_mode_toggle = QtWidgets.QCheckBox("⚡ Agent Mode MCP")
         self.agent_mode_toggle.setObjectName("AgentModeToggle")
         self.agent_mode_toggle.setCursor(QtCore.Qt.PointingHandCursor)
-        self.agent_mode_toggle.setToolTip("Enable to let AI automatically execute Houdini actions.")
+        self.agent_mode_toggle.setToolTip("WARNING: Enabling this will utilize and consume more tokens by using MCP.")
+        self.agent_mode_toggle.setStyleSheet("QCheckBox { color: #f1c40f; font-weight: bold; }")
         
         ctx_bar.addWidget(self.context_progress)
         ctx_bar.addSpacing(10)
@@ -148,10 +149,17 @@ class AIAgentUI(QtWidgets.QWidget):
         send_layout.addWidget(self.send_btn)
         input_layout.addWidget(self.text_input)
         input_layout.addLayout(send_layout)
+        
+        self.warning_label = QtWidgets.QLabel("⚠️ WARNING: LLM-generated code and MCP actions may cause issues. Always backup or version-up your scene file to avoid data loss.")
+        self.warning_label.setObjectName("WarningLabel")
+        self.warning_label.setWordWrap(True)
+        self.warning_label.setAlignment(QtCore.Qt.AlignCenter)
+        
         chat_layout.addLayout(top_bar)
         chat_layout.addWidget(self.chat_display, stretch=1)
         chat_layout.addWidget(self.cmd_popup)
         chat_layout.addLayout(ctx_bar)
+        chat_layout.addWidget(self.warning_label)
         chat_layout.addWidget(input_container)
         splitter.addWidget(self.sidebar)
         splitter.addWidget(self.chat_area)
@@ -340,7 +348,8 @@ class AIAgentUI(QtWidgets.QWidget):
             html_parts.append(build_bubble(role, msg["content"], self.code_blocks_store, self.action_states))
             
         if self.current_agent_response is not None:
-            s_role = "Thinking" if self.current_agent_response.startswith("Thinking") else ("Agent (MCP)" if hasattr(self, 'agent_mode_toggle') and self.agent_mode_toggle.isChecked() else "Agent")
+            is_thinking = self.current_agent_response.startswith("Thinking") or self.current_agent_response.startswith("⚡ Agent Mode MCP Working")
+            s_role = "Thinking" if is_thinking else ("Agent (MCP)" if hasattr(self, 'agent_mode_toggle') and self.agent_mode_toggle.isChecked() else "Agent")
             html_parts.append(build_bubble(s_role, self.current_agent_response, self.code_blocks_store, self.action_states))
         full_html = f"<body style='background-color: #333333; color: #dfdfdf; font-family: sans-serif; font-size: 14px;'>{''.join(html_parts)}</body>"
         vbar = self.chat_display.verticalScrollBar()
@@ -377,6 +386,8 @@ class AIAgentUI(QtWidgets.QWidget):
             self.send_btn.setEnabled(True)
             self.new_chat_btn.setEnabled(True)
             self.session_scroll.setEnabled(True)
+            self.text_input.setEnabled(True)
+            self.text_input.setFocus()
             
             # Save the stopped message directly to DB to ensure it renders!
             stop_msg = "\n\n*[Stopped by User]*"
@@ -409,6 +420,7 @@ class AIAgentUI(QtWidgets.QWidget):
         self.send_btn.setText("◼")
         self.new_chat_btn.setEnabled(False)
         self.session_scroll.setEnabled(False)
+        self.text_input.setEnabled(False)
         
         # Save user message immediately to the DB to prevent disappearance or double rendering
         if not self.core.session_id:
@@ -420,7 +432,9 @@ class AIAgentUI(QtWidgets.QWidget):
         sys_prompt = self.context.generate_system_prompt()
         full_sys_context = sys_prompt + "\n\n" + hou_context
         
-        self.current_agent_response = "Thinking..."
+        agent_mode_active = self.agent_mode_toggle.isChecked()
+        self.thinking_base_text = "⚡ Agent Mode MCP Working" if agent_mode_active else "Thinking"
+        self.current_agent_response = self.thinking_base_text + "..."
         self.first_chunk_received = False
         self.request_render()
         self.thinking_dots = 0
@@ -437,7 +451,8 @@ class AIAgentUI(QtWidgets.QWidget):
             self.thinking_timer.stop()
             return
         self.thinking_dots = (self.thinking_dots + 1) % 4
-        self.current_agent_response = "Thinking" + "." * self.thinking_dots
+        base_text = getattr(self, "thinking_base_text", "Thinking")
+        self.current_agent_response = base_text + "." * self.thinking_dots
         self.request_render()
 
     def on_chunk_received(self, chunk):
@@ -457,6 +472,8 @@ class AIAgentUI(QtWidgets.QWidget):
         self.send_btn.setEnabled(True)
         self.new_chat_btn.setEnabled(True)
         self.session_scroll.setEnabled(True)
+        self.text_input.setEnabled(True)
+        self.text_input.setFocus()
         self.refresh_session_list()
         self._perform_render()
 

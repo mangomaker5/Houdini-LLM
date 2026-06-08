@@ -81,7 +81,7 @@ def build_bubble(role, text, code_blocks_store, action_states):
             <tr>
                 <td width="30%"></td>
                 <td align="right">
-                    <div style="font-weight: bold; color: #aaaaaa; margin-bottom: 8px; font-size: 13px;">Human :-</div>
+                    <div style="font-weight: bold; color: #aaaaaa; margin-bottom: 8px; font-size: 13px;">Human</div>
                     <table border="0" cellpadding="14" cellspacing="0" bgcolor="#383838" style="border-radius: 18px;">
                         <tr>
                             <td align="left" style="color: #dfdfdf; font-size: 14px; line-height: 1.6;">
@@ -93,12 +93,19 @@ def build_bubble(role, text, code_blocks_store, action_states):
             </tr>
         </table>
         '''
-    elif role == "Agent":
+    elif role in ("Agent", "Agent (MCP)"):
+        if role == "Agent":
+            title = "◆ HOUDINI-LLM"
+            color = "#19c37d"
+        else:
+            title = "⚡ Agent Mode MCP"
+            color = "#f1c40f"
+            
         return f'''
         <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-top: 15px; margin-bottom: 25px;">
             <tr>
                 <td align="left">
-                    <div style="font-weight: bold; color: #19c37d; margin-bottom: 8px; font-size: 15px;">◆ AI TD Agent</div>
+                    <div style="font-weight: bold; color: {color}; margin-bottom: 8px; font-size: 15px;">{title}</div>
                     <div style="color: #dfdfdf; line-height: 1.6; font-size: 14px;">
                         {html_content}
                     </div>
