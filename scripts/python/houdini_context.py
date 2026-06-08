@@ -31,7 +31,8 @@ class HoudiniContext:
             for parm in node.parms():
                 if not parm.isHidden() and not parm.isDisabled():
                     try:
-                        val = parm.eval()
+                        # Use unexpandedString instead of eval() to completely avoid triggering slow geometry cooks!
+                        val = parm.unexpandedString()
                         # Truncate long strings
                         if isinstance(val, str) and len(val) > 100:
                             val = val[:100] + "..."

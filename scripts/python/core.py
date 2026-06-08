@@ -141,14 +141,12 @@ class AIAgentCore:
         if summary:
             request_history.append({"role": "system", "content": f"Previous conversation summary context:\n{summary}"})
             
-        # 3. Add recent messages from DB
+        # 3. Add recent messages from DB (this now includes the user message we just saved)
         messages = database.get_messages(self.db_path, self.session_id)
         for msg in messages:
-            request_history.append({"role": msg["role"], "content": msg["content"]})
+            role_for_api = "assistant" if msg["role"] == "assistant_mcp" else msg["role"]
+            request_history.append({"role": role_for_api, "content": msg["content"]})
             
-        # 4. Add the new user message
-        request_history.append({"role": "user", "content": user_message})
-        
         return request_history
 
     def generate_response_sync(self, user_message, system_context=""):
@@ -189,12 +187,18 @@ class AIAgentCore:
         except Exception as e:
             return f"Error: {str(e)}"
 
-    def generate_response_stream(self, user_message, system_context=""):
+    def generate_response_stream(self, user_message, system_context="", agent_mode=False, check_cancelled=None):
         if not self.api_key:
             yield "Error: Please set your OpenRouter API key in settings."
             return
             
-        request_history = self._prepare_request_history(user_message, system_context)
+        if not self.session_id:
+            self.start_new_session()
+            
+        # Save user message immediately to the DB to prevent disappearance if an error occurs
+        self.append_to_history("user", user_message)
+            
+        request_history = self._prepare_request_history(system_context)
         
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -203,49 +207,121 @@ class AIAgentCore:
             "Content-Type": "application/json"
         }
         
-        data = {
-            "model": self.model,
-            "messages": request_history,
-            "stream": True
-        }
-        
-        full_reply = ""
-        
-        try:
-            req = urllib.request.Request(
-                self.base_url, 
-                data=json.dumps(data).encode('utf-8'), 
-                headers=headers, 
-                method='POST'
-            )
-            with urllib.request.urlopen(req) as response:
-                while True:
-                    line = response.readline()
-                    if not line:
-                        break
-                    line = line.decode('utf-8').strip()
-                    if not line:
-                        continue
-                    if line.startswith("data: "):
-                        json_str = line[6:]
-                        if json_str == "[DONE]":
+        # Loop to support multiple tool call iterations
+        while True:
+            if check_cancelled and check_cancelled():
+                break
+                
+            data = {
+                "model": self.model,
+                "messages": request_history,
+                "stream": True
+            }
+            if agent_mode:
+                import mcp_tools
+                data["tools"] = mcp_tools.AGENT_TOOLS_SCHEMA
+
+            full_reply = ""
+            tool_calls_buffer = {}
+            
+            try:
+                req = urllib.request.Request(
+                    self.base_url, 
+                    data=json.dumps(data).encode('utf-8'), 
+                    headers=headers, 
+                    method='POST'
+                )
+                with urllib.request.urlopen(req, timeout=20) as response:
+                    while True:
+                        if check_cancelled and check_cancelled():
                             break
-                        try:
-                            chunk = json.loads(json_str)
-                            if "choices" in chunk and len(chunk["choices"]) > 0:
-                                delta = chunk["choices"][0].get("delta", {})
-                                content = delta.get("content", "")
-                                if content:
-                                    full_reply += content
-                                    yield content
-                        except:
-                            pass
-                            
-            if full_reply:
-                self.append_to_history("user", user_message)
-                self.append_to_history("assistant", full_reply)
-        except urllib.error.HTTPError as e:
-            error_msg = e.read().decode('utf-8')
-            yield f"\nAPI Error ({e.code}): {error_msg}"
-        except Exception as e:
-            yield f"\nConnection Error: {str(e)}"
+                        line = response.readline()
+                        if not line:
+                            break
+                        line = line.decode('utf-8').strip()
+                        if not line:
+                            continue
+                        if line.startswith("data: "):
+                            json_str = line[6:]
+                            if json_str == "[DONE]":
+                                break
+                            try:
+                                chunk = json.loads(json_str)
+                                if "choices" in chunk and len(chunk["choices"]) > 0:
+                                    delta = chunk["choices"][0].get("delta", {})
+                                    
+                                    # Text content
+                                    content = delta.get("content", "")
+                                    if content:
+                                        full_reply += content
+                                        yield content
+                                        
+                                    # Tool calls
+                                    if "tool_calls" in delta:
+                                        for tc in delta["tool_calls"]:
+                                            idx = tc.get("index")
+                                            if idx not in tool_calls_buffer:
+                                                tool_calls_buffer[idx] = {"id": tc.get("id", ""), "type": "function", "function": {"name": "", "arguments": ""}}
+                                            if "id" in tc and tc["id"]:
+                                                tool_calls_buffer[idx]["id"] = tc["id"]
+                                            if "function" in tc:
+                                                f = tc["function"]
+                                                if "name" in f and f["name"]:
+                                                    tool_calls_buffer[idx]["function"]["name"] += f["name"]
+                                                if "arguments" in f and f["arguments"]:
+                                                    tool_calls_buffer[idx]["function"]["arguments"] += f["arguments"]
+                            except:
+                                pass
+                                
+                if check_cancelled and check_cancelled():
+                    break
+                    
+                # If there are tool calls to process
+                if tool_calls_buffer:
+                    assistant_msg = {
+                        "role": "assistant",
+                        "content": full_reply if full_reply else None,
+                        "tool_calls": list(tool_calls_buffer.values())
+                    }
+                    request_history.append(assistant_msg)
+                    
+                    import mcp_tools
+                    for tc in tool_calls_buffer.values():
+                        if check_cancelled and check_cancelled():
+                            break
+                        f_name = tc["function"]["name"]
+                        f_args = tc["function"]["arguments"]
+                        
+                        yield f"\n\n*⚙ Executing tool: `{f_name}`...*\n\n"
+                        
+                        result = mcp_tools.execute_tool(f_name, f_args)
+                        
+                        request_history.append({
+                            "role": "tool",
+                            "tool_call_id": tc["id"],
+                            "name": f_name,
+                            "content": result
+                        })
+                        
+                    # Continue the while loop to send tool results back to LLM
+                    continue
+                
+                # If no tool calls, we are completely done
+                if full_reply:
+                    role_to_save = "assistant_mcp" if agent_mode else "assistant"
+                    self.append_to_history(role_to_save, full_reply)
+                break
+                    
+            except urllib.error.HTTPError as e:
+                error_msg = e.read().decode('utf-8')
+                msg = f"\nAPI Error ({e.code}): {error_msg}"
+                role_to_save = "assistant_mcp" if agent_mode else "assistant"
+                self.append_to_history(role_to_save, msg)
+                yield msg
+                break
+            except Exception as e:
+                msg = f"\nConnection Error: {str(e)}"
+                role_to_save = "assistant_mcp" if agent_mode else "assistant"
+                self.append_to_history(role_to_save, msg)
+                yield msg
+                break

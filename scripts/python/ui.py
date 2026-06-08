@@ -107,7 +107,15 @@ class AIAgentUI(QtWidgets.QWidget):
         self.context_progress.setMaximum(50000)
         self.context_progress.setFixedHeight(18)
         self.context_progress.setMaximumWidth(280)
+        
+        self.agent_mode_toggle = QtWidgets.QCheckBox("⚡ Agent Mode")
+        self.agent_mode_toggle.setObjectName("AgentModeToggle")
+        self.agent_mode_toggle.setCursor(QtCore.Qt.PointingHandCursor)
+        self.agent_mode_toggle.setToolTip("Enable to let AI automatically execute Houdini actions.")
+        
         ctx_bar.addWidget(self.context_progress)
+        ctx_bar.addSpacing(10)
+        ctx_bar.addWidget(self.agent_mode_toggle)
         ctx_bar.addStretch()
         # Command Autocomplete Popup
         self.cmd_popup = QtWidgets.QListWidget()
@@ -207,6 +215,9 @@ class AIAgentUI(QtWidgets.QWidget):
             self.session_layout.addWidget(widget)
 
     def delete_session(self, session_id):
+        if hasattr(self, 'worker') and self.worker.isRunning():
+            QtWidgets.QMessageBox.warning(self, 'Warning', 'Please stop the active agent before deleting a session.')
+            return
         reply = QtWidgets.QMessageBox.question(
             self, 'Confirm Deletion', 'Are you sure you want to delete this session?',
             QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
@@ -216,6 +227,8 @@ class AIAgentUI(QtWidgets.QWidget):
                 self.request_render()
 
     def rename_session(self, session_id, new_title):
+        if hasattr(self, 'worker') and self.worker.isRunning():
+            return
         self.core.rename_session(session_id, new_title)
         self.refresh_session_list()
 
@@ -316,28 +329,64 @@ class AIAgentUI(QtWidgets.QWidget):
         self.code_blocks_store = {}
         html_parts = []
         for msg in self.core.get_chat_history():
-            role = "User" if msg["role"] == "user" else ("System" if msg["role"] == "system" else "Agent")
+            if msg["role"] == "user":
+                role = "User"
+            elif msg["role"] == "system":
+                role = "System"
+            elif msg["role"] == "assistant_mcp":
+                role = "Agent (MCP)"
+            else:
+                role = "Agent"
             html_parts.append(build_bubble(role, msg["content"], self.code_blocks_store, self.action_states))
         if self.current_user_message is not None:
             html_parts.append(build_bubble("User", self.current_user_message, self.code_blocks_store, self.action_states))
         if self.current_agent_response is not None:
-            s_role = "Thinking" if self.current_agent_response.startswith("Thinking") else "Agent"
+            s_role = "Thinking" if self.current_agent_response.startswith("Thinking") else ("Agent (MCP)" if hasattr(self, 'agent_mode_toggle') and self.agent_mode_toggle.isChecked() else "Agent")
             html_parts.append(build_bubble(s_role, self.current_agent_response, self.code_blocks_store, self.action_states))
         full_html = f"<body style='background-color: #333333; color: #dfdfdf; font-family: sans-serif; font-size: 14px;'>{''.join(html_parts)}</body>"
         vbar = self.chat_display.verticalScrollBar()
         saved_scroll = vbar.value()
-        was_at_bottom = (saved_scroll >= vbar.maximum() - 20)
+        
+        # Determine if we are currently at the bottom (with a little padding)
+        was_at_bottom = (saved_scroll >= vbar.maximum() - 25)
+        
         self.chat_display.setUpdatesEnabled(False)
         self.chat_display.setHtml(full_html)
+        
+        # Force document layout calculation to update vbar.maximum() immediately
+        self.chat_display.document().documentLayout().documentSize()
+        
         if was_at_bottom:
             vbar.setValue(vbar.maximum())
         else:
             vbar.setValue(saved_scroll)
+            
         self.chat_display.setUpdatesEnabled(True)
+        
+        # Ensure scroll stays at the bottom after event loop processes painting
+        if was_at_bottom:
+            QtCore.QTimer.singleShot(0, lambda: vbar.setValue(vbar.maximum()))
+            
         self.update_context_ui()
 
     # --- Send / Streaming ---
     def on_send_clicked(self):
+        # Kill Switch Logic
+        if self.send_btn.text() == "◼" and hasattr(self, 'worker') and self.worker.isRunning():
+            self.worker.stop()
+            self.send_btn.setText("↑")
+            self.send_btn.setEnabled(True)
+            self.new_chat_btn.setEnabled(True)
+            self.session_scroll.setEnabled(True)
+            
+            # Save the stopped message directly to DB to ensure it renders!
+            stop_msg = "\n\n*[Stopped by User]*"
+            self.core.append_to_history("assistant", stop_msg)
+            
+            self.current_agent_response = ""
+            self.request_render()
+            return
+
         user_text = self.text_input.toPlainText().strip()
         if not user_text:
             return
@@ -357,7 +406,11 @@ class AIAgentUI(QtWidgets.QWidget):
             self.request_render()
             return
 
-        self.send_btn.setEnabled(False)
+        # Start Generation
+        self.send_btn.setText("◼")
+        self.new_chat_btn.setEnabled(False)
+        self.session_scroll.setEnabled(False)
+        
         hou_context = self.context.get_selected_nodes_context()
         sys_prompt = self.context.generate_system_prompt()
         full_sys_context = sys_prompt + "\n\n" + hou_context
@@ -367,7 +420,9 @@ class AIAgentUI(QtWidgets.QWidget):
         self.request_render()
         self.thinking_dots = 0
         self.thinking_timer.start(400)
-        self.worker = AgentWorker(self.core, user_text, full_sys_context, self)
+        
+        agent_mode_active = self.agent_mode_toggle.isChecked()
+        self.worker = AgentWorker(self.core, user_text, full_sys_context, agent_mode_active, self)
         self.worker.chunk_received.connect(self.on_chunk_received)
         self.worker.finished_response.connect(self.on_response_finished)
         self.worker.start()
@@ -394,7 +449,10 @@ class AIAgentUI(QtWidgets.QWidget):
         self.last_ai_response = self.current_agent_response
         self.current_user_message = None
         self.current_agent_response = None
+        self.send_btn.setText("↑")
         self.send_btn.setEnabled(True)
+        self.new_chat_btn.setEnabled(True)
+        self.session_scroll.setEnabled(True)
         self.refresh_session_list()
         self._perform_render()
 
