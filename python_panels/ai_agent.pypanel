@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pythonPanelDocument>
+  <interface name="ai_td_agent" label="AI TD Agent" icon="MISC_robot" help_url="">
+    <script><![CDATA[
+import sys
+
+# Hardcoded path to ensure Houdini can find the module without __file__ errors
+scripts_dir = r"D:\dev\applications\Houdini-LLM\scripts\python"
+
+if scripts_dir not in sys.path:
+    sys.path.insert(0, scripts_dir)
+
+error_msg = None
+try:
+    import ui
+    import importlib
+    importlib.reload(ui)
+except Exception as e:
+    import traceback
+    error_msg = traceback.format_exc()
+
+def createInterface():
+    if error_msg:
+        import hou
+        label = hou.qt.QtWidgets.QLabel("IMPORT CRASH:\n" + error_msg)
+        label.setStyleSheet("background-color: red; color: white; font-size: 14px;")
+        label.setWordWrap(True)
+        return label
+    try:
+        return ui.run_panel()
+    except Exception as e:
+        import traceback
+        import hou
+        label = hou.qt.QtWidgets.QLabel("CRASH: " + traceback.format_exc())
+        label.setStyleSheet("background-color: red; color: white; font-size: 16px;")
+        label.setWordWrap(True)
+        return label
+]]></script>
+    <includeInToolbarMenu menu_position="414" create_separator="false"/>
+    <help><![CDATA[]]></help>
+  </interface>
+</pythonPanelDocument>
