@@ -292,7 +292,7 @@ class AIAgentUI(QtWidgets.QWidget):
                     row = self.cmd_popup.currentRow() - 1
                     self.cmd_popup.setCurrentRow(row if row >= 0 else self.cmd_popup.count() - 1)
                     return True
-            if event.key() == QtCore.Qt.Key_Return and not event.modifiers() & QtCore.Qt.ShiftModifier:
+            if event.key() in (QtCore.Qt.Key_Return, QtCore.Qt.Key_Enter) and not (event.modifiers() & QtCore.Qt.ShiftModifier):
                 self.on_send_clicked()
                 return True
         return super().eventFilter(obj, event)
@@ -338,8 +338,7 @@ class AIAgentUI(QtWidgets.QWidget):
             else:
                 role = "Agent"
             html_parts.append(build_bubble(role, msg["content"], self.code_blocks_store, self.action_states))
-        if self.current_user_message is not None:
-            html_parts.append(build_bubble("User", self.current_user_message, self.code_blocks_store, self.action_states))
+            
         if self.current_agent_response is not None:
             s_role = "Thinking" if self.current_agent_response.startswith("Thinking") else ("Agent (MCP)" if hasattr(self, 'agent_mode_toggle') and self.agent_mode_toggle.isChecked() else "Agent")
             html_parts.append(build_bubble(s_role, self.current_agent_response, self.code_blocks_store, self.action_states))
@@ -411,10 +410,16 @@ class AIAgentUI(QtWidgets.QWidget):
         self.new_chat_btn.setEnabled(False)
         self.session_scroll.setEnabled(False)
         
+        # Save user message immediately to the DB to prevent disappearance or double rendering
+        if not self.core.session_id:
+            self.core.start_new_session()
+        self.core.append_to_history("user", user_text)
+        self.refresh_session_list()
+        
         hou_context = self.context.get_selected_nodes_context()
         sys_prompt = self.context.generate_system_prompt()
         full_sys_context = sys_prompt + "\n\n" + hou_context
-        self.current_user_message = user_text
+        
         self.current_agent_response = "Thinking..."
         self.first_chunk_received = False
         self.request_render()
@@ -447,7 +452,6 @@ class AIAgentUI(QtWidgets.QWidget):
         self.render_timer.stop()
         self.needs_render = False
         self.last_ai_response = self.current_agent_response
-        self.current_user_message = None
         self.current_agent_response = None
         self.send_btn.setText("↑")
         self.send_btn.setEnabled(True)

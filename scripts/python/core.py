@@ -124,7 +124,7 @@ class AIAgentCore:
             pass
         return ["deepseek/deepseek-v4-pro"]
 
-    def _prepare_request_history(self, user_message, system_context):
+    def _prepare_request_history(self, system_context):
         if not self.session_id:
             self.start_new_session()
             
@@ -191,12 +191,6 @@ class AIAgentCore:
         if not self.api_key:
             yield "Error: Please set your OpenRouter API key in settings."
             return
-            
-        if not self.session_id:
-            self.start_new_session()
-            
-        # Save user message immediately to the DB to prevent disappearance if an error occurs
-        self.append_to_history("user", user_message)
             
         request_history = self._prepare_request_history(system_context)
         
