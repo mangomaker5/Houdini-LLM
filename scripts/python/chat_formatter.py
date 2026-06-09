@@ -123,7 +123,7 @@ def format_markdown_to_html(
         </table>
         """
         blocks.append(html)
-        return f"___BLOCK_{len(blocks) - 1}___"
+        return f"@@@BLOCK_{len(blocks) - 1}@@@"
 
     # Match all code blocks: ```language ... ```
     text = re.sub(
@@ -131,6 +131,13 @@ def format_markdown_to_html(
         save_generic_block,
         text,
         flags=re.DOTALL | re.IGNORECASE,
+    )
+
+    # Format Tool Execution tags BEFORE markdown
+    text = re.sub(
+        r"(?:\n\s*)*___TOOL_EXEC_(.*?)___(?:\n\s*)*",
+        r"\n\n<div style='color: #888888; font-style: italic; font-size: 11px; margin: 4px 0px; background-color: #2b2b2b; padding: 2px 8px; border-radius: 4px; display: inline-block;'>⚙ Executing tool: <b>\1</b></div>\n\n",
+        text,
     )
 
     # Parse markdown to HTML
@@ -148,16 +155,9 @@ def format_markdown_to_html(
     except ImportError:
         text = text.replace("\n", "<br/>")
 
-    # Format Tool Execution tags
-    text = re.sub(
-        r"(?:<br/>\s*)*___TOOL_EXEC_(.*?)___(?:<br/>\s*)*",
-        r"<div style='color: #888888; font-style: italic; font-size: 11px; margin: 4px 0px; background-color: #2b2b2b; padding: 2px 8px; border-radius: 4px; display: inline-block;'>⚙ Executing tool: <b>\1</b></div><br/>",
-        text,
-    )
-
     # Restore the code blocks
     for i, html in enumerate(blocks):
-        text = text.replace(f"___BLOCK_{i}___", html)
+        text = text.replace(f"@@@BLOCK_{i}@@@", html)
 
     return text
 
