@@ -52,6 +52,10 @@ class HoudiniContext:
             "1. When writing code to modify the scene, ALWAYS wrap your Python code in standard markdown ```python blocks.\n"
             "2. Ensure all parameter names match the exact internal names provided in the context.\n"
             "3. Do not include `import hou` inside your code blocks, as it is already provided.\n"
-            "4. Keep explanations brief. Focus on the code."
+            "4. Keep explanations brief. Focus on the code. Do NOT generate ASCII text diagrams to represent node networks, it wastes context tokens.\n"
+            "5. NEVER guess parameter names. Even for basic nodes like 'box' or 'sphere', if you are not 100% certain of the internal parameter name, you MUST use the `get_node_parameters` tool to look it up before proposing code.\n"
+            "6. ALWAYS verify a parent node exists before creating children. `hou.node('/path')` returns `None` if invalid, and `None.createNode()` will crash.\n"
+            "7. To modify a node's interface, you MUST use `ptg = node.parmTemplateGroup()`, append to it, and call `node.setParmTemplateGroup(ptg)`. Do NOT guess non-existent methods like `.addParameter()`.\n"
+            '8. To set expressions like `$F`, you MUST use `parm.setExpression()`. If passing literal `$`, use raw strings `r"$F"`.'
         )
         return prompt

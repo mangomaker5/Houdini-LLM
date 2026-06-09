@@ -233,6 +233,7 @@ class AIAgentCore:
             import mcp_tools
 
         complete_response = ""
+        syntax_retries = 0
 
         # Loop to support multiple tool call iterations
         while True:
@@ -327,7 +328,35 @@ class AIAgentCore:
 
                         tool_msg = f"\n___TOOL_EXEC_{f_name}___\n"
                         complete_response += tool_msg
-                        yield tool_msg
+
+                        # Do NOT yield tool_msg to the UI. Instead, send a status update.
+                        if "on_status_update" in kwargs:
+                            status_map = {
+                                "search_memory": (
+                                    "🧠 Searching Knowledge Base",
+                                    "#9b59b6",
+                                ),
+                                "search_api_docs": (
+                                    "📚 Querying Houdini Docs",
+                                    "#3498db",
+                                ),
+                                "get_node_parameters": (
+                                    "👁️ Inspecting Live Scene",
+                                    "#e67e22",
+                                ),
+                                "analyze_node_type": (
+                                    "🔍 Analyzing Node Constraints",
+                                    "#f1c40f",
+                                ),
+                                "propose_code_change": (
+                                    "✍️ Synthesizing Python Script",
+                                    "#2ecc71",
+                                ),
+                            }
+                            msg, color = status_map.get(
+                                f_name, (f"✨ Running {f_name}", "#95a5a6")
+                            )
+                            kwargs["on_status_update"](msg, color)
 
                         result = mcp_tools.execute_tool(f_name, f_args)
 
@@ -336,17 +365,27 @@ class AIAgentCore:
                             and "on_code_proposed" in kwargs
                         ):
                             try:
-                                args_dict = json.loads(f_args)
-                                proposed_code = args_dict.get("python_code", "")
-                                if proposed_code:
-                                    kwargs["on_code_proposed"](proposed_code)
-                                    injection = (
-                                        f"\n\n```python\n{proposed_code}\n```\n\n"
-                                    )
-                                    complete_response += injection
-                                    yield injection
+                                result_dict = json.loads(result)
+                                if result_dict.get("status") != "error":
+                                    syntax_retries = 0
+                                    args_dict = json.loads(f_args)
+                                    proposed_code = args_dict.get("python_code", "")
+                                    if proposed_code:
+                                        kwargs["on_code_proposed"](proposed_code)
+                                        injection = (
+                                            f"\n\n```python\n{proposed_code}\n```\n\n"
+                                        )
+                                        complete_response += injection
+                                        yield injection
+                                else:
+                                    syntax_retries += 1
+                                    if syntax_retries >= 3:
+                                        msg = "\n\n❌ **Agent repeatedly failed pre-flight syntax checks.** Halting to save tokens. Please clarify your prompt."
+                                        complete_response += msg
+                                        yield msg
+                                        return
                             except Exception as e:
-                                print(f"Error extracting proposed code: {e}")
+                                print(f"Error handling proposed code: {e}")
 
                         request_history.append(
                             {

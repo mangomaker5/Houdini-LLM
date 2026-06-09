@@ -135,6 +135,7 @@ class AIAgentUI(
             stop_msg = "\n\n*[Stopped by User]*"
             self.core.append_to_history("assistant", stop_msg)
 
+            self.is_agent_thinking = False
             self.current_agent_response = ""
             self.request_render()
             return
@@ -179,43 +180,44 @@ class AIAgentUI(
         sys_prompt = get_persona_prompt(self.persona_combo.currentText())
         full_sys_context = sys_prompt + "\n\n" + hou_context
 
-        agent_mode_active = self.agent_mode_toggle.isChecked()
-        self.thinking_base_text = (
-            "⚡ Agent Mode Auto Working" if agent_mode_active else "Thinking"
-        )
-        self.current_agent_response = self.thinking_base_text + "..."
+        agent_mode_active = True
+        self.thinking_base_text = "✨ Thinking"
+        self.thinking_color = "#f1c40f"
+        self.is_agent_thinking = True
+        self.current_agent_response = ""
         self.first_chunk_received = False
         self.request_render()
         self.thinking_dots = 0
         self.thinking_timer.start(400)
 
-        agent_mode_active = self.agent_mode_toggle.isChecked()
         self.worker = AgentWorker(
             self.core, user_text, full_sys_context, agent_mode_active, self
         )
+        self.worker.status_update.connect(self.on_agent_status_update)
         self.worker.chunk_received.connect(self.on_chunk_received)
         self.worker.finished_response.connect(self.on_response_finished)
         self.worker.code_proposed.connect(self.on_code_proposed)
         self.worker.start()
 
     def animate_thinking(self):
-        if self.first_chunk_received:
-            self.thinking_timer.stop()
-            return
-        self.thinking_dots = (self.thinking_dots + 1) % 4
-        base_text = getattr(self, "thinking_base_text", "Thinking")
-        self.current_agent_response = base_text + "." * self.thinking_dots
+        if getattr(self, "is_agent_thinking", False):
+            self.thinking_dots = (self.thinking_dots + 1) % 4
+            self.request_render()
+
+    def on_agent_status_update(self, msg, color):
+        self.is_agent_thinking = True
+        self.thinking_base_text = msg
+        self.thinking_color = color
         self.request_render()
 
     def on_chunk_received(self, chunk):
-        if not self.first_chunk_received:
-            self.thinking_timer.stop()
-            self.current_agent_response = ""
-            self.first_chunk_received = True
+        self.is_agent_thinking = False
         self.current_agent_response += chunk
         self.request_render()
 
     def on_response_finished(self):
+        self.is_agent_thinking = False
+        self.thinking_timer.stop()
         self.render_timer.stop()
         self.needs_render = False
         self.last_ai_response = self.current_agent_response

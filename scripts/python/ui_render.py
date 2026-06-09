@@ -62,23 +62,25 @@ class UIRenderMixin:
                 )
             )
 
-        if self.current_agent_response is not None:
-            is_thinking = self.current_agent_response.startswith(
-                "Thinking"
-            ) or self.current_agent_response.startswith("⚡ Agent Mode Auto Working")
-            s_role = (
-                "Thinking"
-                if is_thinking
-                else (
-                    "Agent (MCP)"
-                    if hasattr(self, "agent_mode_toggle")
-                    and self.agent_mode_toggle.isChecked()
-                    else "Agent"
-                )
-            )
+        if getattr(self, "is_agent_thinking", False):
+            msg = getattr(self, "thinking_base_text", "✨ Thinking")
+            dots = "." * getattr(self, "thinking_dots", 0)
+            color = getattr(self, "thinking_color", "#f1c40f")
+
+            styled_role = f"<span style='color: {color}'>{msg}{dots}</span>"
             html_parts.append(
                 build_bubble(
-                    s_role,
+                    "Agent Status",
+                    styled_role,
+                    self.code_blocks_store,
+                    self.action_states,
+                )
+            )
+
+        if self.current_agent_response:
+            html_parts.append(
+                build_bubble(
+                    "Agent (MCP)",
                     self.current_agent_response,
                     self.code_blocks_store,
                     self.action_states,

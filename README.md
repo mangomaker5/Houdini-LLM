@@ -51,7 +51,13 @@ The plugin requires the `sqlite-vec` library for its long-term vector memory. We
 
 *This will safely download the required libraries into a local `python_libs` folder inside your repository.*
 
-### Step 3: Tell Houdini Where the Plugin Is
+### Step 3: Build the RAG Knowledge Base (One-time Setup)
+To give the AI Agent its deep knowledge of Houdini's Python API, VEX, and nodes, you need to build the vector database.
+1. Simply double-click `build_rag_database.bat` in the root folder.
+2. Wait for the terminal to finish generating the database embeddings.
+*(This is a one-time process. It will skip automatically if you run it twice!)*
+
+### Step 4: Tell Houdini Where the Plugin Is
 Houdini uses `.json` package files to load custom plugins.
 
 1. Open your Houdini preferences directory (usually located at `Documents/houdini20.0/` or similar depending on your version).
@@ -64,7 +70,7 @@ Houdini uses `.json` package files to load custom plugins.
 {
     "env": [
         {
-            "HOUDINI_LLM_ROOT": "D:/dev/applications/Houdini-LLM"
+            "HOUDINI_LLM_ROOT": "C:/path/to/where/you/extracted/Houdini-LLM"
         },
         {
             "PYTHONPATH": [
@@ -72,12 +78,13 @@ Houdini uses `.json` package files to load custom plugins.
                 "$HOUDINI_LLM_ROOT/python_libs"
             ]
         }
-    ]
+    ],
+    "path": "$HOUDINI_LLM_ROOT"
 }
 ```
 *(Make sure to use forward slashes `/` in the path!)*
 
-### Step 4: Run Houdini
+### Step 5: Run Houdini
 1. Start Houdini.
 2. Open a new **Python Panel** tab in your layout.
 3. Select **AI TD Agent** from the interface dropdown.

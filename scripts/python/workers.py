@@ -7,6 +7,7 @@ class AgentWorker(QtCore.QThread):
     chunk_received = QtCore.Signal(str)
     finished_response = QtCore.Signal()
     code_proposed = QtCore.Signal(str)
+    status_update = QtCore.Signal(str, str)
 
     def __init__(
         self, core, user_message, system_context, agent_mode=False, parent=None
@@ -41,6 +42,7 @@ class AgentWorker(QtCore.QThread):
             self.agent_mode,
             self.check_cancelled,
             on_code_proposed=self.code_proposed.emit,
+            on_status_update=self.status_update.emit,
         ):
             if self.is_cancelled:
                 break

@@ -98,16 +98,6 @@ class UIBuilderMixin:
         self.context_progress.setFixedHeight(18)
         self.context_progress.setMaximumWidth(280)
 
-        self.agent_mode_toggle = QtWidgets.QCheckBox("⚡ Agent Mode Auto")
-        self.agent_mode_toggle.setObjectName("AgentModeToggle")
-        self.agent_mode_toggle.setCursor(QtCore.Qt.PointingHandCursor)
-        self.agent_mode_toggle.setToolTip(
-            "WARNING: Enabling this will utilize and consume more tokens by using MCP."
-        )
-        self.agent_mode_toggle.setStyleSheet(
-            "QCheckBox { color: #f1c40f; font-weight: bold; }"
-        )
-
         self.persona_combo = QtWidgets.QComboBox()
         self.persona_combo.setObjectName("PersonaCombo")
         self.persona_combo.addItems(
@@ -127,8 +117,6 @@ class UIBuilderMixin:
         ctx_bar.addWidget(self.context_progress)
         ctx_bar.addSpacing(10)
         ctx_bar.addWidget(self.persona_combo)
-        ctx_bar.addSpacing(10)
-        ctx_bar.addWidget(self.agent_mode_toggle)
         ctx_bar.addStretch()
         # Command Autocomplete Popup
         self.cmd_popup = QtWidgets.QListWidget()

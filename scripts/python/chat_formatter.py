@@ -82,7 +82,7 @@ def format_markdown_to_html(
         )
 
         actions_html = ""
-        if show_actions:
+        if show_actions and lang == "PYTHON":
             actions_html = f'''
                                 <table border="0" cellpadding="4" cellspacing="0">
                                     <tr>
@@ -252,6 +252,16 @@ def build_bubble(
                     </table>
                 </td>
                 <td width="10%"></td>
+            </tr>
+        </table>
+        """
+    elif role == "Agent Status":
+        return f"""
+        <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-top: 15px; margin-bottom: 25px;">
+            <tr>
+                <td align="left">
+                    <div style="font-weight: bold; margin-bottom: 8px; font-size: 15px;">{text}</div>
+                </td>
             </tr>
         </table>
         """

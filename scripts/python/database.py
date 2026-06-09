@@ -141,6 +141,9 @@ def init_db(memory_dir):
                 created_at REAL
             )
         """)
+        from rag.database import create_docs_table
+
+        create_docs_table(db_path)
 
     conn.commit()
     return db_path
