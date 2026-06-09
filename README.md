@@ -89,3 +89,10 @@ Houdini uses `.json` package files to load custom plugins.
 2. Open a new **Python Panel** tab in your layout.
 3. Select **AI TD Agent** from the interface dropdown.
 4. Click the ⚙ (Gear) icon to configure your API key, and you are ready to go!
+
+---
+
+## 📚 Deep Dive Documentation
+
+If you want to understand exactly how the internal architecture, intelligent RAG chunking, and code execution loops work under the hood, check out our dedicated documentation:
+- **[Agentic Workflow & Architecture](agentic_workflow.md)**
