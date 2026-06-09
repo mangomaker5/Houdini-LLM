@@ -174,7 +174,7 @@ class AIAgentCore:
         req = urllib.request.Request(
             url, data=json.dumps(data).encode("utf-8"), headers=headers, method="POST"
         )
-        with urllib.request.urlopen(req) as response:
+        with urllib.request.urlopen(req, timeout=20) as response:
             res = json.loads(response.read().decode("utf-8"))
             return res["data"][0]["embedding"]
 
@@ -202,7 +202,7 @@ class AIAgentCore:
                 headers=headers,
                 method="POST",
             )
-            with urllib.request.urlopen(req) as response:
+            with urllib.request.urlopen(req, timeout=20) as response:
                 result = json.loads(response.read().decode("utf-8"))
                 if "choices" in result and len(result["choices"]) > 0:
                     return result["choices"][0]["message"]["content"]
@@ -340,6 +340,11 @@ class AIAgentCore:
                                 proposed_code = args_dict.get("python_code", "")
                                 if proposed_code:
                                     kwargs["on_code_proposed"](proposed_code)
+                                    injection = (
+                                        f"\n\n```python\n{proposed_code}\n```\n\n"
+                                    )
+                                    complete_response += injection
+                                    yield injection
                             except Exception as e:
                                 print(f"Error extracting proposed code: {e}")
 

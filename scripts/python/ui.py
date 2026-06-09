@@ -362,15 +362,17 @@ class AIAgentUI(
         if url_str.startswith("save_code:"):
             if success:
                 self.action_states[url_str] = "&nbsp;✅ Saved!&nbsp;"
+                self.request_render()
+                # Do NOT reset if successful, so the user knows it's saved.
             else:
                 self.action_states[url_str] = f"&nbsp;❌ Failed: {message}&nbsp;"
-            self.request_render()
-            QtCore.QTimer.singleShot(
-                3000,
-                lambda: self.reset_action_state(
-                    url_str, "&nbsp;🌟 Save to Memory&nbsp;"
-                ),
-            )
+                self.request_render()
+                QtCore.QTimer.singleShot(
+                    3000,
+                    lambda: self.reset_action_state(
+                        url_str, "&nbsp;🌟 Save to Memory&nbsp;"
+                    ),
+                )
 
     def on_reject_code(self):
         self.review_panel.hide()
