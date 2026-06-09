@@ -84,7 +84,11 @@ class ChatTextBrowser(QtWidgets.QTextBrowser):
         if event.button() == QtCore.Qt.LeftButton:
             anchor = self.anchorAt(event.pos())
             if anchor:
-                if anchor.startswith("copy_code:") or anchor.startswith("run_code:"):
+                if (
+                    anchor.startswith("copy_code:")
+                    or anchor.startswith("run_code:")
+                    or anchor.startswith("save_code:")
+                ):
                     self.custom_link_clicked.emit(anchor)
                     return
                 elif anchor.startswith("http"):

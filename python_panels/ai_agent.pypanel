@@ -4,11 +4,8 @@
     <script><![CDATA[
 import sys
 
-# Hardcoded path to ensure Houdini can find the module without __file__ errors
-scripts_dir = r"D:\dev\applications\Houdini-LLM\scripts\python"
-
-if scripts_dir not in sys.path:
-    sys.path.insert(0, scripts_dir)
+# In a production environment, PYTHONPATH is set via the Houdini-LLM.json package file.
+# No need to manually inject paths here.
 
 error_msg = None
 try:

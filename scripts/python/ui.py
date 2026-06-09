@@ -43,8 +43,7 @@ class AIAgentUI(
         self.persona_combo.currentIndexChanged.connect(self.on_persona_changed)
         self.approve_btn.clicked.connect(self.on_approve_code)
         self.reject_btn.clicked.connect(self.on_reject_code)
-        self.save_code_btn.clicked.connect(self.on_save_pending_code)
-        self.copy_btn.clicked.connect(self.on_copy_pending_code)
+        self.chat_display.custom_link_clicked.connect(self.on_custom_link_clicked)
         self.manage_memory_btn.clicked.connect(self.on_manage_memory)
         self.load_models()
         self.refresh_session_list()
@@ -208,13 +207,24 @@ class AIAgentUI(
             self.review_code.setPlainText(code)
             self.review_panel.show()
             self.pending_code = code
+            self.code_executed = False
+
+            self.approve_btn.show()
+            self.approve_btn.setEnabled(True)
+            self.approve_btn.setText("✅ Approve & Run")
+
+            self.reject_btn.setText("❌ Reject")
+            self.reject_btn.setStyleSheet(
+                "QPushButton { background-color: #ff4a4a; color: white; font-weight: bold; padding: 5px; border-radius: 4px; }"
+            )
+            self.reject_btn.show()
 
     def on_approve_code(self):
         if not hasattr(self, "pending_code") or not self.pending_code:
             return
-        self.review_panel.hide()
+
         code = self.pending_code
-        self.pending_code = None
+        self.code_executed = True
 
         import hou
         import traceback
@@ -230,62 +240,106 @@ class AIAgentUI(
                 "user",
                 "I approved and ran the proposed code. It executed successfully.",
             )
+
+            # Hide panel completely on success! (User can rely on inline buttons now)
+            self.review_panel.hide()
+
         except Exception:
-            print(f"--- Agent Execution Failed ---\n{traceback.format_exc()}")
+            err_trace = traceback.format_exc()
+            print(f"--- Agent Execution Failed ---\n{err_trace}")
+            self.core.append_to_history(
+                "user",
+                f"Code execution failed with error:\n```python\n{err_trace}\n```\nPlease fix the code and propose it again.",
+            )
+
+            # Keep buttons visible
+            self.approve_btn.setEnabled(False)
+            self.approve_btn.setText("❌ Failed")
+
+            self.reject_btn.setText("Close")
+            self.reject_btn.setStyleSheet(
+                "QPushButton { background-color: #444444; color: white; font-weight: bold; padding: 5px; border-radius: 4px; }"
+            )
 
         self.refresh_session_list()
         self.request_render()
 
-    def on_save_pending_code(self):
-        if not hasattr(self, "pending_code") or not self.pending_code:
+    def on_custom_link_clicked(self, link):
+        action, block_id = link.split(":", 1)
+        code = self.code_blocks_store.get(block_id, "")
+        if not code:
             return
-        from workers import ReflectionWorker
 
-        code = self.pending_code
-        self.save_code_btn.setText("⏳ Saving...")
-        self.save_code_btn.setEnabled(False)
-        worker = ReflectionWorker(self.core, code, "save_btn", self)
-        worker.finished_reflection.connect(self.on_reflection_finished)
-        if not hasattr(self, "reflection_workers"):
-            self.reflection_workers = []
-        self.reflection_workers.append(worker)
-        worker.start()
+        if action == "copy_code":
+            QtWidgets.QApplication.clipboard().setText(code)
+            self.action_states[link] = "&nbsp;✅ Copied!&nbsp;"
+            self.request_render()
+            QtCore.QTimer.singleShot(
+                2000, lambda: self.reset_action_state(link, "&nbsp;📋 Copy Code&nbsp;")
+            )
+
+        elif action == "run_code":
+            import hou
+
+            try:
+                with hou.undos.group("Agent Execution (Inline)"):
+                    local_dict = {"hou": hou}
+                    exec(code, local_dict)
+                self.action_states[link] = "&nbsp;✅ Success!&nbsp;"
+            except Exception as e:
+                self.action_states[link] = "&nbsp;❌ Failed!&nbsp;"
+                print(f"Code execution error:\n{e}")
+            self.request_render()
+            QtCore.QTimer.singleShot(
+                3000, lambda: self.reset_action_state(link, "&nbsp;▶ Run Code&nbsp;")
+            )
+
+        elif action == "save_code":
+            from workers import ReflectionWorker
+
+            self.action_states[link] = "&nbsp;⏳ Saving...&nbsp;"
+            self.request_render()
+
+            worker = ReflectionWorker(self.core, code, link, self)
+            worker.finished_reflection.connect(self.on_reflection_finished)
+            if not hasattr(self, "reflection_workers"):
+                self.reflection_workers = []
+            self.reflection_workers.append(worker)
+            worker.start()
+
+    def reset_action_state(self, link, default_text):
+        if link in self.action_states:
+            self.action_states[link] = default_text
+            self.request_render()
 
     def on_reflection_finished(self, url_str, success, message):
         worker = self.sender()
         if hasattr(self, "reflection_workers") and worker in self.reflection_workers:
             self.reflection_workers.remove(worker)
-        if success:
-            self.save_code_btn.setText("✅ Saved!")
-        else:
-            self.save_code_btn.setText(f"❌ Failed: {message}")
-        QtCore.QTimer.singleShot(3000, self._reset_save_btn)
 
-    def _reset_save_btn(self):
-        self.save_code_btn.setText("🌟 Save to Memory")
-        self.save_code_btn.setEnabled(True)
-
-    def on_copy_pending_code(self):
-        if not hasattr(self, "pending_code") or not self.pending_code:
-            return
-        import hou
-        try:
-            hou.ui.copyTextToClipboard(self.pending_code)
-        except Exception:
-            QtWidgets.QApplication.clipboard().setText(self.pending_code)
-        self.copy_btn.setText("✅ Copied!")
-        QtCore.QTimer.singleShot(2000, self._reset_copy_btn)
-
-    def _reset_copy_btn(self):
-        self.copy_btn.setText("📋 Copy Code")
+        if url_str.startswith("save_code:"):
+            if success:
+                self.action_states[url_str] = "&nbsp;✅ Saved!&nbsp;"
+            else:
+                self.action_states[url_str] = f"&nbsp;❌ Failed: {message}&nbsp;"
+            self.request_render()
+            QtCore.QTimer.singleShot(
+                3000,
+                lambda: self.reset_action_state(
+                    url_str, "&nbsp;🌟 Save to Memory&nbsp;"
+                ),
+            )
 
     def on_reject_code(self):
         self.review_panel.hide()
         self.pending_code = None
-        self.core.append_to_history(
-            "user",
-            "I rejected the proposed code. Please revise it or ask for clarification.",
-        )
+
+        if not getattr(self, "code_executed", False):
+            self.core.append_to_history(
+                "user",
+                "I rejected the proposed code. Please revise it or ask for clarification.",
+            )
+
         self.refresh_session_list()
         self.request_render()
 

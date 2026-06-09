@@ -1,7 +1,14 @@
 import re
 
 
-def format_markdown_to_html(text):
+def format_markdown_to_html(
+    text, code_blocks_store=None, action_states=None, show_actions=True
+):
+    if code_blocks_store is None:
+        code_blocks_store = {}
+    if action_states is None:
+        action_states = {}
+
     if text is None:
         return ""
     text = str(text)
@@ -12,11 +19,71 @@ def format_markdown_to_html(text):
     def save_generic_block(match):
         code = match.group(2).strip()
         lang = match.group(1).strip().upper() if match.group(1) else "CODE"
-        html = f'''
+
+        block_id = f"block_{len(code_blocks_store)}"
+        code_blocks_store[block_id] = code
+
+        run_text = action_states.get(f"run_code:{block_id}", "&nbsp;▶ Run Code&nbsp;")
+        copy_text = action_states.get(
+            f"copy_code:{block_id}", "&nbsp;📋 Copy Code&nbsp;"
+        )
+        save_text = action_states.get(
+            f"save_code:{block_id}", "&nbsp;🌟 Save to Memory&nbsp;"
+        )
+
+        run_color = (
+            "#ffffff"
+            if ("Success" in run_text or "Error" in run_text or "Failed" in run_text)
+            else "#19c37d"
+        )
+        run_bg = (
+            "#19c37d"
+            if "Success" in run_text
+            else (
+                "#ff4a4a"
+                if ("Error" in run_text or "Failed" in run_text)
+                else "#444444"
+            )
+        )
+        copy_color = "#19c37d" if "Copied" in copy_text else "#dfdfdf"
+        save_color = (
+            "#19c37d"
+            if "Saved" in save_text
+            else ("#ff4a4a" if "Failed" in save_text else "#f1c40f")
+        )
+
+        actions_html = ""
+        if show_actions:
+            actions_html = f'''
+                                <table border="0" cellpadding="4" cellspacing="0">
+                                    <tr>
+                                        <td bgcolor="#444444" style="border-radius: 4px;">
+                                            <a href="save_code:{block_id}" style="color: {save_color}; text-decoration: none;">{save_text}</a>
+                                        </td>
+                                        <td width="5"></td>
+                                        <td bgcolor="{run_bg}" style="border-radius: 4px;">
+                                            <a href="run_code:{block_id}" style="color: {run_color}; text-decoration: none;">{run_text}</a>
+                                        </td>
+                                        <td width="5"></td>
+                                        <td bgcolor="#444444" style="border-radius: 4px;">
+                                            <a href="copy_code:{block_id}" style="color: {copy_color}; text-decoration: none;">{copy_text}</a>
+                                        </td>
+                                    </tr>
+                                </table>
+            '''
+
+        html = f"""
         <table width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#1e1e1e" style="margin-top: 15px; margin-bottom: 15px; border-radius: 6px;">
             <tr>
                 <td bgcolor="#2b2b2b" style="padding: 5px 10px; border-bottom: 1px solid #444444;">
-                    <div style="color: #aaaaaa; font-size: 12px; font-weight: bold;">{lang}</div>
+                    <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                        <tr>
+                            <td align="left" style="color: #aaaaaa; font-size: 12px; font-weight: bold;">{lang}</td>
+                            <td align="right" style="font-size: 11px; font-weight: bold;">
+                                {actions_html}
+                            </td>
+                        </tr>
+                    </table>
                 </td>
             </tr>
             <tr>
@@ -25,9 +92,9 @@ def format_markdown_to_html(text):
                 </td>
             </tr>
         </table>
-        '''
+        """
         blocks.append(html)
-        return f"___BLOCK_{len(blocks)-1}___"
+        return f"___BLOCK_{len(blocks) - 1}___"
 
     # Match all code blocks: ```language ... ```
     text = re.sub(
@@ -54,7 +121,14 @@ def format_markdown_to_html(text):
     return text
 
 
-def build_bubble(role, text, show_header=True):
+def build_bubble(
+    role, text, code_blocks_store=None, action_states=None, show_header=True
+):
+    if code_blocks_store is None:
+        code_blocks_store = {}
+    if action_states is None:
+        action_states = {}
+
     if text is None:
         text = ""
     else:
@@ -86,7 +160,10 @@ def build_bubble(role, text, show_header=True):
         </table>
         """
 
-    html_content = format_markdown_to_html(text)
+    is_agent = role in ("Agent", "Agent (MCP)")
+    html_content = format_markdown_to_html(
+        text, code_blocks_store, action_states, show_actions=is_agent
+    )
 
     if role == "User":
         return f"""

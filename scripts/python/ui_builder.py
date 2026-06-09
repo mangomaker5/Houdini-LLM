@@ -195,18 +195,6 @@ class UIBuilderMixin:
         )
         self.approve_btn.setCursor(QtCore.Qt.PointingHandCursor)
 
-        self.save_code_btn = QtWidgets.QPushButton("🌟 Save to Memory")
-        self.save_code_btn.setStyleSheet(
-            "QPushButton { background-color: #f1c40f; color: #2b2b2b; font-weight: bold; padding: 5px; border-radius: 4px; }"
-        )
-        self.save_code_btn.setCursor(QtCore.Qt.PointingHandCursor)
-
-        self.copy_btn = QtWidgets.QPushButton("📋 Copy Code")
-        self.copy_btn.setStyleSheet(
-            "QPushButton { background-color: #444444; color: #dfdfdf; font-weight: bold; padding: 5px; border-radius: 4px; }"
-        )
-        self.copy_btn.setCursor(QtCore.Qt.PointingHandCursor)
-
         self.reject_btn = QtWidgets.QPushButton("❌ Reject")
         self.reject_btn.setStyleSheet(
             "QPushButton { background-color: #ff4a4a; color: white; font-weight: bold; padding: 5px; border-radius: 4px; }"
@@ -214,8 +202,6 @@ class UIBuilderMixin:
         self.reject_btn.setCursor(QtCore.Qt.PointingHandCursor)
 
         btn_layout.addStretch()
-        btn_layout.addWidget(self.save_code_btn)
-        btn_layout.addWidget(self.copy_btn)
         btn_layout.addWidget(self.approve_btn)
         btn_layout.addWidget(self.reject_btn)
 

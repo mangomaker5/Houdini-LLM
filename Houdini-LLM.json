@@ -1,0 +1,13 @@
+{
+    "env": [
+        {
+            "HOUDINI_LLM_ROOT": "C:/path/to/where/you/extracted/Houdini-LLM"
+        },
+        {
+            "PYTHONPATH": [
+                "$HOUDINI_LLM_ROOT/scripts/python",
+                "$HOUDINI_LLM_ROOT/python_libs"
+            ]
+        }
+    ]
+}

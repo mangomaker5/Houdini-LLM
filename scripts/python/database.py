@@ -3,6 +3,10 @@ import os
 import time
 import threading
 
+
+# In production, sqlite-vec will be loaded from python_libs, which is
+# added to sys.path via the Houdini-LLM.json package file.
+
 try:
     import sqlite_vec
 

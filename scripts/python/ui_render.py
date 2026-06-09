@@ -56,6 +56,8 @@ class UIRenderMixin:
                 build_bubble(
                     role,
                     msg["content"],
+                    self.code_blocks_store,
+                    self.action_states,
                     show_header=show_header,
                 )
             )
@@ -78,6 +80,8 @@ class UIRenderMixin:
                 build_bubble(
                     s_role,
                     self.current_agent_response,
+                    self.code_blocks_store,
+                    self.action_states,
                 )
             )
         full_html = f"<body style='background-color: #333333; color: #dfdfdf; font-family: sans-serif; font-size: 14px;'>{''.join(html_parts)}</body>"

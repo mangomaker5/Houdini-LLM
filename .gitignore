@@ -37,3 +37,5 @@ docs/*
 .ruff_cache/
 .mypy_cache/
 .pytest_cache/
+
+python_libs/
