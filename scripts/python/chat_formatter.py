@@ -133,8 +133,20 @@ def format_markdown_to_html(
         flags=re.DOTALL | re.IGNORECASE,
     )
 
-    # Now it is safe to replace newlines
-    text = text.replace("\n", "<br/>")
+    # Parse markdown to HTML
+    try:
+        import markdown
+
+        text = markdown.markdown(text, extensions=["tables", "sane_lists"])
+        # Enhance PySide6 table rendering
+        text = text.replace(
+            "<table>",
+            '<table border="1" cellspacing="0" cellpadding="4" style="border-collapse: collapse; border-color: #555555; margin-top: 10px; margin-bottom: 10px;">',
+        )
+        text = text.replace("<th>", '<th bgcolor="#333333" style="padding: 5px;">')
+        text = text.replace("<td>", '<td style="padding: 5px;">')
+    except ImportError:
+        text = text.replace("\n", "<br/>")
 
     # Format Tool Execution tags
     text = re.sub(
@@ -231,10 +243,15 @@ def build_bubble(
             <tr>
                 <td align="left">
                     {header_html}
-                    <div style="color: #dfdfdf; line-height: 1.6; font-size: 14px;">
-                        {html_content}
-                    </div>
+                    <table border="0" cellpadding="14" cellspacing="0" bgcolor="#2b2b2b" style="border-radius: 18px;">
+                        <tr>
+                            <td align="left" style="color: #dfdfdf; font-size: 14px; line-height: 1.6;">
+                                {html_content}
+                            </td>
+                        </tr>
+                    </table>
                 </td>
+                <td width="10%"></td>
             </tr>
         </table>
         """
