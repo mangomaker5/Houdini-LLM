@@ -43,11 +43,38 @@ class AIAgentUI(
         self.persona_combo.currentIndexChanged.connect(self.on_persona_changed)
         self.approve_btn.clicked.connect(self.on_approve_code)
         self.reject_btn.clicked.connect(self.on_reject_code)
+        self.retry_btn.clicked.connect(self.on_retry_execution)
         self.chat_display.custom_link_clicked.connect(self.on_custom_link_clicked)
         self.manage_memory_btn.clicked.connect(self.on_manage_memory)
         self.load_models()
         self.refresh_session_list()
         self.request_render()
+        self.run_startup_diagnostics()
+
+    def run_startup_diagnostics(self):
+        import importlib.util
+
+        print("\n--- [Houdini-LLM] Startup Diagnostics ---")
+
+        if importlib.util.find_spec("sqlite3") is not None:
+            print("  [OK] sqlite3 loaded successfully.")
+        else:
+            print("  [ERROR] sqlite3 not found! Please run install_dependencies.bat")
+
+        if importlib.util.find_spec("sqlite_vec") is not None:
+            print("  [OK] sqlite-vec loaded successfully.")
+        else:
+            print(
+                "  [ERROR] sqlite-vec not found! Vector memory will not work. Please run install_dependencies.bat"
+            )
+
+        if importlib.util.find_spec("pygments") is not None:
+            print("  [OK] pygments loaded successfully.")
+        else:
+            print(
+                "  [ERROR] pygments not found! Syntax highlighting will not work. Please run install_dependencies.bat"
+            )
+        print("------------------------------------------\n")
 
     def on_persona_changed(self, index):
         if self.core.session_id and len(self.core.get_chat_history()) > 0:
@@ -209,6 +236,7 @@ class AIAgentUI(
             self.pending_code = code
             self.code_executed = False
 
+            self.retry_btn.hide()
             self.approve_btn.show()
             self.approve_btn.setEnabled(True)
             self.approve_btn.setText("✅ Approve & Run")
@@ -244,17 +272,24 @@ class AIAgentUI(
             # Hide panel completely on success! (User can rely on inline buttons now)
             self.review_panel.hide()
 
-        except Exception:
+        except Exception as e:
             err_trace = traceback.format_exc()
             print(f"--- Agent Execution Failed ---\n{err_trace}")
-            self.core.append_to_history(
-                "user",
-                f"Code execution failed with error:\n```python\n{err_trace}\n```\nPlease fix the code and propose it again.",
-            )
+            import json
 
-            # Keep buttons visible
-            self.approve_btn.setEnabled(False)
-            self.approve_btn.setText("❌ Failed")
+            error_feedback = {
+                "status": "failed",
+                "error_type": type(e).__name__,
+                "message": str(e),
+                "traceback": err_trace,
+                "instruction": "Please analyze the error and propose fixed code.",
+            }
+            json_str = json.dumps(error_feedback, indent=2)
+            self.last_error_message = f"```json\n{json_str}\n```"
+            self.core.append_to_history("user", self.last_error_message)
+
+            self.approve_btn.hide()
+            self.retry_btn.show()
 
             self.reject_btn.setText("Close")
             self.reject_btn.setStyleSheet(
@@ -263,6 +298,13 @@ class AIAgentUI(
 
         self.refresh_session_list()
         self.request_render()
+
+    def on_retry_execution(self):
+        self.review_panel.hide()
+        self.text_input.setPlainText(
+            getattr(self, "last_error_message", "Retry please.")
+        )
+        self.on_send_clicked()
 
     def on_custom_link_clicked(self, link):
         action, block_id = link.split(":", 1)
@@ -348,17 +390,41 @@ class AIAgentUI(
 
         dialog = QtWidgets.QDialog(self)
         dialog.setWindowTitle("Manage Memory")
-        dialog.resize(600, 400)
+        dialog.resize(800, 500)
         layout = QtWidgets.QVBoxLayout(dialog)
+
+        splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
 
         list_widget = QtWidgets.QListWidget()
         skills = get_all_learned_skills(self.core.db_path)
+
+        # We need a dictionary to quickly look up code by id
+        skills_dict = {}
         for skill in skills:
+            skills_dict[skill["id"]] = skill.get("code", "")
             item = QtWidgets.QListWidgetItem(f"[{skill['id']}] {skill['description']}")
             item.setData(QtCore.Qt.UserRole, skill["id"])
             list_widget.addItem(item)
 
-        layout.addWidget(list_widget)
+        code_preview = QtWidgets.QTextBrowser()
+        code_preview.setStyleSheet(
+            "background-color: #1e1e1e; color: #cccccc; font-family: 'Consolas', monospace;"
+        )
+
+        def on_item_changed(current, previous):
+            if current:
+                skill_id = current.data(QtCore.Qt.UserRole)
+                code_preview.setPlainText(skills_dict.get(skill_id, ""))
+            else:
+                code_preview.clear()
+
+        list_widget.currentItemChanged.connect(on_item_changed)
+
+        splitter.addWidget(list_widget)
+        splitter.addWidget(code_preview)
+        splitter.setSizes([300, 500])
+
+        layout.addWidget(splitter)
 
         btn_layout = QtWidgets.QHBoxLayout()
         delete_btn = QtWidgets.QPushButton("Delete Selected")

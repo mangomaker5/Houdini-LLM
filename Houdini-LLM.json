@@ -9,5 +9,6 @@
                 "$HOUDINI_LLM_ROOT/python_libs"
             ]
         }
-    ]
+    ],
+    "path": "$HOUDINI_LLM_ROOT"
 }

@@ -201,7 +201,15 @@ class UIBuilderMixin:
         )
         self.reject_btn.setCursor(QtCore.Qt.PointingHandCursor)
 
+        self.retry_btn = QtWidgets.QPushButton("🔄 Ask Agent to Fix")
+        self.retry_btn.setStyleSheet(
+            "QPushButton { background-color: #f1c40f; color: #1e1e1e; font-weight: bold; padding: 5px; border-radius: 4px; }"
+        )
+        self.retry_btn.setCursor(QtCore.Qt.PointingHandCursor)
+        self.retry_btn.hide()
+
         btn_layout.addStretch()
+        btn_layout.addWidget(self.retry_btn)
         btn_layout.addWidget(self.approve_btn)
         btn_layout.addWidget(self.reject_btn)
 

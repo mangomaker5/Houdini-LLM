@@ -1,5 +1,14 @@
 import re
 
+try:
+    from pygments import highlight
+    from pygments.lexers import get_lexer_by_name, guess_lexer
+    from pygments.formatters import HtmlFormatter
+
+    HAS_PYGMENTS = True
+except ImportError:
+    HAS_PYGMENTS = False
+
 
 def format_markdown_to_html(
     text, code_blocks_store=None, action_states=None, show_actions=True
@@ -19,6 +28,26 @@ def format_markdown_to_html(
     def save_generic_block(match):
         code = match.group(2).strip()
         lang = match.group(1).strip().upper() if match.group(1) else "CODE"
+
+        display_code = code
+        if HAS_PYGMENTS:
+            try:
+                lexer_name = match.group(1).strip().lower() if match.group(1) else ""
+                if lexer_name:
+                    lexer = get_lexer_by_name(lexer_name, stripall=True)
+                else:
+                    lexer = guess_lexer(code)
+                formatter = HtmlFormatter(style="monokai", noclasses=True)
+                highlighted = highlight(code, lexer, formatter)
+                pre_match = re.search(
+                    r"<pre[^>]*>(.*?)</pre>",
+                    highlighted,
+                    flags=re.DOTALL | re.IGNORECASE,
+                )
+                if pre_match:
+                    display_code = pre_match.group(1)
+            except Exception:
+                pass
 
         block_id = f"block_{len(code_blocks_store)}"
         code_blocks_store[block_id] = code
@@ -88,7 +117,7 @@ def format_markdown_to_html(
             </tr>
             <tr>
                 <td style="padding: 10px;">
-                    <pre style="color: #cccccc; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; margin: 0;">{code}</pre>
+                    <pre style="color: #cccccc; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; margin: 0; white-space: pre-wrap; word-wrap: break-word;">{display_code}</pre>
                 </td>
             </tr>
         </table>
