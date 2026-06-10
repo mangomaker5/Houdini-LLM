@@ -22,7 +22,7 @@ SEARCH_API_DOCS_SCHEMA = {
 def search_api_docs(query):
     try:
         from core import AIAgentCore
-        from rag.database import search_houdini_docs
+        from rag.vector_db import search_houdini_docs
 
         core = AIAgentCore()
         embedding = core.generate_embedding(query)

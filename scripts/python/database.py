@@ -141,7 +141,7 @@ def init_db(memory_dir):
                 created_at REAL
             )
         """)
-        from rag.database import create_docs_table
+        from rag.vector_db import create_docs_table
 
         create_docs_table(db_path)
 

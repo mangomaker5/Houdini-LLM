@@ -15,7 +15,7 @@ sys.path.append(
 )
 
 from core import AIAgentCore  # noqa: E402
-from rag.database import insert_houdini_doc  # noqa: E402
+from rag.vector_db import insert_houdini_doc  # noqa: E402
 
 
 def clean_wiki_text(text_str):
@@ -118,7 +118,7 @@ def ingest_zip(core, zip_path, prefix, max_files=None):
                     return  # Break completely so we don't leak memory or falsely mark ingested
 
         print(f"Finished ingesting {zip_path}. Total processed: {count}")
-        from rag.database import mark_zip_ingested
+        from rag.vector_db import mark_zip_ingested
 
         mark_zip_ingested(core.db_path, prefix)
     except Exception as e:
@@ -185,7 +185,7 @@ def main():
         "character": "character.zip",
     }
 
-    from rag.database import delete_houdini_docs_by_prefix
+    from rag.vector_db import delete_houdini_docs_by_prefix
 
     while True:
         print("\n=========================================")
