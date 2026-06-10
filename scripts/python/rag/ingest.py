@@ -108,16 +108,17 @@ def ingest_zip(core, zip_path, prefix, max_files=None):
                         )
 
                     count += 1
-                    if count % 50 == 0 or count == total_files:
-                        print(
-                            f"Processed [{count}/{total_files}] files from {zip_path}..."
-                        )
+                    print(
+                        f"\rProcessed [{count}/{total_files}] files from {prefix}...",
+                        end="",
+                        flush=True,
+                    )
                 except Exception as e:
-                    print(f"Critical error processing {f}: {e}")
+                    print(f"\nCritical error processing {f}: {e}")
                     print(f"Aborting current zip ingestion ({prefix}) due to error.")
                     return  # Break completely so we don't leak memory or falsely mark ingested
 
-        print(f"Finished ingesting {zip_path}. Total processed: {count}")
+        print(f"\nFinished ingesting {zip_path}. Total processed: {count}")
         from rag.vector_db import mark_zip_ingested
 
         mark_zip_ingested(core.db_path, prefix)
@@ -269,6 +270,7 @@ def main():
                         )
                         cursor.execute("DELETE FROM houdini_docs")
                         cursor.execute("DELETE FROM houdini_docs_meta")
+                        cursor.execute("DELETE FROM houdini_ingest_status")
                         conn.commit()
                 except Exception:
                     pass

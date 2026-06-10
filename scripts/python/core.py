@@ -171,12 +171,35 @@ class AIAgentCore:
         }
         data = {"input": text, "model": "openai/text-embedding-3-small"}
 
-        req = urllib.request.Request(
-            url, data=json.dumps(data).encode("utf-8"), headers=headers, method="POST"
-        )
-        with urllib.request.urlopen(req, timeout=20) as response:
-            res = json.loads(response.read().decode("utf-8"))
-            return res["data"][0]["embedding"]
+        import time
+        import urllib.error
+
+        for attempt in range(3):
+            try:
+                req = urllib.request.Request(
+                    url,
+                    data=json.dumps(data).encode("utf-8"),
+                    headers=headers,
+                    method="POST",
+                )
+                with urllib.request.urlopen(req, timeout=20) as response:
+                    res = json.loads(response.read().decode("utf-8"))
+                    return res["data"][0]["embedding"]
+            except urllib.error.HTTPError as e:
+                if attempt == 2:
+                    raise
+                print(
+                    f"\n[Warning] API HTTP Error {e.code}: {e.reason}. Retrying ({attempt + 1}/3)..."
+                )
+                retry_after = e.headers.get("Retry-After")
+                time.sleep(int(retry_after) + 1 if retry_after else 2)
+            except Exception as e:
+                if attempt == 2:
+                    raise
+                print(
+                    f"\n[Warning] API Connection Error: {e}. Retrying ({attempt + 1}/3)..."
+                )
+                time.sleep(2)
 
     def generate_response_sync(self, user_message, system_context=""):
         """Synchronous version for summarization background tasks."""
