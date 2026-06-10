@@ -199,17 +199,28 @@ def propose_code_change(python_code):
 def search_memory(query):
     try:
         from core import AIAgentCore
-        from database import search_learned_skills
+        from memory_db import search_learned_skills, search_anti_patterns
 
         core = AIAgentCore()
         embedding = core.generate_embedding(query)
-        results = search_learned_skills(core.db_path, embedding, limit=3)
-        if not results:
+        skills = search_learned_skills(
+            core.db_path, embedding, query_text=query, limit=3
+        )
+        anti_patterns = search_anti_patterns(
+            core.db_path, embedding, query_text=query, limit=2
+        )
+
+        if not skills and not anti_patterns:
             return json.dumps(
-                {"status": "success", "message": "No related skills found in memory."}
+                {
+                    "status": "success",
+                    "message": "No related skills or anti-patterns found in memory.",
+                }
             )
 
-        return json.dumps({"status": "success", "results": results})
+        return json.dumps(
+            {"status": "success", "skills": skills, "anti_patterns": anti_patterns}
+        )
     except Exception as e:
         return json.dumps({"status": "error", "message": str(e)})
 

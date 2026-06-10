@@ -127,92 +127,16 @@ def init_db(memory_dir):
     )
 
     if HAS_SQLITE_VEC:
-        cursor.execute("""
-            CREATE VIRTUAL TABLE IF NOT EXISTS learned_skills USING vec0(
-                id INTEGER PRIMARY KEY,
-                embedding float[1536]
-            )
-        """)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS learned_skills_meta (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                description TEXT,
-                code TEXT,
-                created_at REAL
-            )
-        """)
+        import memory_db
+
+        memory_db.create_memory_tables(db_path)
+
         from rag.vector_db import create_docs_table
 
         create_docs_table(db_path)
 
     conn.commit()
     return db_path
-
-
-def save_learned_skill(db_path, description, code, embedding):
-    if not HAS_SQLITE_VEC:
-        return False
-    conn = get_connection(db_path)
-    now = time.time()
-
-    # Insert metadata
-    cursor = conn.execute(
-        "INSERT INTO learned_skills_meta (description, code, created_at) VALUES (?, ?, ?)",
-        (description, code, now),
-    )
-    skill_id = cursor.lastrowid
-
-    # Insert vector
-    import struct
-
-    # Serialize the float list into bytes
-    embedding_bytes = struct.pack(f"{len(embedding)}f", *embedding)
-    conn.execute(
-        "INSERT INTO learned_skills (id, embedding) VALUES (?, ?)",
-        (skill_id, embedding_bytes),
-    )
-    conn.commit()
-    return skill_id
-
-
-def delete_learned_skill(db_path, skill_id):
-    if not HAS_SQLITE_VEC:
-        return False
-    conn = get_connection(db_path)
-    conn.execute("DELETE FROM learned_skills_meta WHERE id = ?", (skill_id,))
-    conn.execute("DELETE FROM learned_skills WHERE id = ?", (skill_id,))
-    conn.commit()
-    return True
-
-
-def get_all_learned_skills(db_path):
-    if not HAS_SQLITE_VEC:
-        return []
-    conn = get_connection(db_path)
-    cursor = conn.execute("SELECT * FROM learned_skills_meta ORDER BY created_at DESC")
-    return [dict(row) for row in cursor.fetchall()]
-
-
-def search_learned_skills(db_path, query_embedding, limit=3):
-    if not HAS_SQLITE_VEC:
-        return []
-    conn = get_connection(db_path)
-    import struct
-
-    query_bytes = struct.pack(f"{len(query_embedding)}f", *query_embedding)
-
-    # vec_distance_L2 search
-    cursor = conn.execute(
-        """
-        SELECT m.id, m.description, m.code, vec_distance_L2(v.embedding, ?) as distance
-        FROM learned_skills v
-        JOIN learned_skills_meta m ON v.id = m.id
-        ORDER BY distance ASC
-        LIMIT ?
-        """,
-        (query_bytes, limit),
-    )
-    return [dict(row) for row in cursor.fetchall()]
 
 
 def create_session(db_path, session_id, title="New Chat", token_limit=50000):

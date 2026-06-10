@@ -76,11 +76,28 @@ class ReflectionWorker(QtCore.QThread):
                 return
 
             # 3. Save to database
-            from database import save_learned_skill
-
-            success = save_learned_skill(
-                self.core.db_path, description, self.code_block, embedding
+            from memory_db import (
+                save_learned_skill,
+                check_skill_duplicate,
+                update_learned_skill,
             )
+
+            duplicate = check_skill_duplicate(
+                self.core.db_path, embedding, threshold=0.15
+            )
+            if duplicate:
+                success = update_learned_skill(
+                    self.core.db_path,
+                    duplicate["id"],
+                    description,
+                    self.code_block,
+                    embedding,
+                )
+            else:
+                success = save_learned_skill(
+                    self.core.db_path, description, self.code_block, embedding
+                )
+
             if not success:
                 self.finished_reflection.emit(
                     self.url_str, False, "Vector DB extension not loaded"

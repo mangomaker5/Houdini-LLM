@@ -19,9 +19,46 @@ from rag.vector_db import insert_houdini_doc  # noqa: E402
 
 
 def clean_wiki_text(text_str):
-    """Safely cleans Houdini Wiki-text without destroying Python/VEX code."""
+    """Safely cleans Houdini Wiki-text markup without destroying Python/VEX code.
+
+    Houdini help .txt files use a custom wiki format with:
+    - #type:, #cppname:, #group:, #context:, #icon: directives
+    - [Hom:hou.Class#method] cross-references
+    - ::`method(self)` -> return_type method signatures
+    - {{{ }}} code blocks
+    - @methods, @parameters, @related section markers
+    - :usage: annotations
+    - :include directives
+    """
     # Remove carriage returns
     text_str = re.sub(r"\r\n", "\n", text_str)
+    # Strip metadata directives (lines starting with #type:, #cppname:, etc.)
+    text_str = re.sub(
+        r"^#(type|cppname|superclass|group|context|icon|internal|since|tags|replaces|status)\b.*$",
+        "",
+        text_str,
+        flags=re.MULTILINE,
+    )
+    # Convert cross-references [Hom:hou.Class#method] -> hou.Class.method
+    text_str = re.sub(r"\[Hom:(hou\.[^\]#]+)#([^\]]+)\]", r"\1.\2", text_str)
+    text_str = re.sub(r"\[Hom:(hou\.[^\]]+)\]", r"\1", text_str)
+    # Convert VEX references [Vex:funcname] -> funcname
+    text_str = re.sub(r"\[Vex:([^\]]+)\]", r"\1", text_str)
+    # Convert Node references [Node:context/type] -> context/type
+    text_str = re.sub(r"\[Node:([^\]]+)\]", r"\1", text_str)
+    # Strip :include directives
+    text_str = re.sub(r"^:include\b.*$", "", text_str, flags=re.MULTILINE)
+    # Strip code block delimiters but keep content
+    text_str = text_str.replace("{{{", "").replace("}}}", "")
+    # Clean method definition syntax  ::`method(self)` -> method(self)
+    text_str = re.sub(r"::`([^`]+)`", r"\1", text_str)
+    # Strip section markers but keep as headings
+    text_str = re.sub(
+        r"^@(methods|parameters|related|examples)",
+        r"\n== \1 ==",
+        text_str,
+        flags=re.MULTILINE,
+    )
     # Remove excessive newlines (more than 2)
     text_str = re.sub(r"\n{3,}", "\n\n", text_str)
     return text_str.strip()
@@ -147,8 +184,16 @@ def main():
             with sqlite3.connect(core.db_path) as conn:
                 cursor = conn.cursor()
                 print("\n[FORCE] Wiping existing documents from the vector database...")
-                cursor.execute("DELETE FROM houdini_docs")
-                cursor.execute("DELETE FROM houdini_docs_meta")
+                for tbl in [
+                    "houdini_docs",
+                    "houdini_docs_meta",
+                    "houdini_docs_fts",
+                    "houdini_ingest_status",
+                ]:
+                    try:
+                        cursor.execute(f"DELETE FROM {tbl}")
+                    except Exception:
+                        pass
                 conn.commit()
         except Exception:
             pass
@@ -224,7 +269,6 @@ def main():
             print(f" [{i:2d}] {prefix:<15s} (Status: {status_map[prefix]})")
 
         print(" -----------------------------------------")
-        print(" [A]  Ingest ALL Pending Zips")
         print(" [F]  Force Rebuild ENTIRE Database")
         print(" [Q]  Quit")
         print("=========================================")
@@ -234,24 +278,6 @@ def main():
         if choice == "Q":
             print("Exiting.")
             break
-
-        elif choice == "A":
-            pending_zips = [
-                k for k in zip_keys if status_map[k] in ("⏳ Pending", "⚠️ Partial")
-            ]
-            if not pending_zips:
-                print("\nAll zips are already ingested!")
-                continue
-            for prefix in pending_zips:
-                if status_map[prefix] == "⚠️ Partial":
-                    print(f"\nCleaning up partial ingestion for {prefix}...")
-                    delete_houdini_docs_by_prefix(core.db_path, prefix)
-                zip_path = os.path.join(base_help_dir, critical_zips[prefix])
-                if os.path.exists(zip_path):
-                    ingest_zip(core, zip_path, prefix, max_files=None)
-                else:
-                    print(f"Warning: Could not find {zip_path}")
-            print("\nAll pending zips completed.")
 
         elif choice == "F":
             ans = (
@@ -268,9 +294,16 @@ def main():
                         print(
                             "\n[FORCE] Wiping existing documents from the vector database..."
                         )
-                        cursor.execute("DELETE FROM houdini_docs")
-                        cursor.execute("DELETE FROM houdini_docs_meta")
-                        cursor.execute("DELETE FROM houdini_ingest_status")
+                        for tbl in [
+                            "houdini_docs",
+                            "houdini_docs_meta",
+                            "houdini_docs_fts",
+                            "houdini_ingest_status",
+                        ]:
+                            try:
+                                cursor.execute(f"DELETE FROM {tbl}")
+                            except Exception:
+                                pass
                         conn.commit()
                 except Exception:
                     pass

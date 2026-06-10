@@ -19,8 +19,8 @@ No matter how many times the same prompt is run, the Agent strictly follows this
 graph TD
     A[User Prompt + Persona Prompt] --> B[LLM Triggered]
     B --> C[1. Tool: search_memory]
-    C --> D{Memory Found?}
-    D -- Yes --> E[Extract Past Proven Code]
+    C --> D{Memory / Anti-Patterns Found?}
+    D -- Yes --> E[Extract Past Proven Code & Avoid Past Mistakes]
     D -- No --> F[2. Tool: search_api_docs]
     E --> F
     F --> G[3. Tool: get_node_parameters / analyze_node_type]
@@ -33,19 +33,18 @@ graph TD
     L -- Reject --> M[Error/Traceback sent back to LLM]
     M --> H
     L -- Approve --> N[Execute Code Live in Houdini]
-    N -- Fail Runtime --> M
-    N -- Pass --> O[Code Executed Successfully!]
-    O --> P{User Clicks Star}
-    P -- Yes --> Q[ReflectionWorker]
-    Q --> R[Summarize Code + Generate API Vector Embedding]
-    R --> S[Save to SQLite memory DB for future use]
+    N -- Fail Runtime --> O[Save Traceback to Anti-Patterns DB]
+    O --> M
+    N -- Pass --> P[Code Executed Successfully!]
+    P --> Q{User Clicks Star}
+    Q -- Yes --> R[ReflectionWorker deduplicates & saves to Vector DB]
 ```
 
 ### Step 1: The Historical Check (The "Brain")
-Before writing any code, the Agent **must** use the `search_memory` tool. It queries the local SQLite Vector DB. If a reflection memory (from a previous successful session) is found, the Agent will prioritize extracting and adapting that proven script, ensuring it doesn't solve the same problem twice.
+Before writing any code, the Agent **must** use the `search_memory` tool. It queries the local SQLite Vector DB. If a reflection memory (from a previous successful session) is found, the Agent will prioritize extracting and adapting that proven script. It also searches for **Anti-Patterns** (past runtime failures), ensuring it doesn't repeat past mistakes.
 
 ### Step 2: The Documentation Check (RAG)
-Whether memory is found or not, the Agent **must** query the `search_api_docs` tool. This embeds the query, checks the local `houdini_docs` vector database, and pulls the exact Houdini `hou` API syntax and Gotchas to ensure it is using the correct version's logic.
+Whether memory is found or not, the Agent **must** query the `search_api_docs` tool. This embeds the query, checks the local `houdini_docs` vector database using a **Hybrid Search** (Vector L2 Distance + FTS5 Exact Keyword Matches blended via RRF), and pulls the exact Houdini `hou` API syntax and Gotchas.
 
 ### Step 3: The Live API Check (The "Eyes")
 The Agent uses `get_node_parameters` or `analyze_node_type` to directly inspect the live node graph in your actual Houdini scene. Rather than guessing, it actively collects the exact internal parameter names, ramps, and tuple definitions required to manipulate your specific nodes.
@@ -54,27 +53,21 @@ The Agent uses `get_node_parameters` or `analyze_node_type` to directly inspect 
 The Agent synthesizes the script and calls `propose_code_change`. Before you even see it, the system runs a lightweight AST syntax check in the background. If there are basic indentation or Python syntax errors, the Agent is silently rebuffed and forced to fix it (up to 3 times) before giving up.
 
 ### Step 5: Human-in-the-Loop Review (HITL)
-Once syntax passes, the yellow review panel appears in the UI. You review the proposed code. If you approve, the script executes live in the Houdini session. If execution fails, the traceback is immediately fed back to the Agent, and the loop safely restarts.
+Once syntax passes, the yellow review panel appears in the UI. You review the proposed code. If you approve, the script executes live in the Houdini session. If execution fails, the traceback is immediately logged to the **Anti-Patterns DB**, fed back to the Agent, and the loop safely restarts.
 
 ### Step 6: The Hermes Self-Learning Loop
-**The "50 Fails vs 1 Success" Problem:** An Agent might fail 50 times before finally writing the perfect script. If the agent memorized everything automatically, it would memorize all 50 broken attempts!
-
-To prevent this, the learning loop requires your explicit permission. When the code succeeds and you are satisfied, you manually trigger the **[🌟 Save to Memory]** button. A background `ReflectionWorker` seamlessly sends the perfect code to the LLM for summarization, embeds that summary, and saves the vector to the SQLite DB. Over time, for your specific workflow, the agent literally converges toward 100% accuracy.
+To prevent memory pollution, the learning loop requires your explicit permission. When the code succeeds and you are satisfied, you manually trigger the **[🌟 Save to Memory]** button. A background `ReflectionWorker` seamlessly sends the perfect code to the LLM for summarization, embeds that summary, and saves the vector to the SQLite DB. If a nearly identical skill already exists, it intelligently **deduplicates** and updates the old one.
 
 ---
 
 ## 3. Architecture & Design Principles
 
 ### Modular Personas
-To ensure our prompts remain concise and adhere to best practices (like the 450-line rule), all Persona logic is decoupled from the core engine. Each agent (e.g., `arnold_expert.py`, `fx_expert.py`) lives in its own tiny file in the `scripts/python/personas/` directory, containing only its specific system prompt. If a user switches Personas mid-session, a yellow warning is seamlessly injected into the chat.
+To ensure our prompts remain concise and adhere to best practices (like the 450-line rule), all Persona logic is decoupled from the core engine. Each agent (e.g., `arnold_expert.py`, `fx_expert.py`) lives in its own tiny file in the `scripts/python/personas/` directory.
 
-### Lightweight Vector Embedding
-Generating embeddings for the Memory DB uses **ZERO local GPU, CPU, or RAM**. Because we are already connected to an LLM provider via API, we leverage OpenRouter's API to generate the vector embeddings. The API does the math in milliseconds and returns the vector, which is instantly saved to SQLite.
+### Hybrid Vector & Keyword Search (V2)
+The database engine relies on `sqlite-vec` for 1536-dimensional L2 distance search (Semantic) running entirely locally without a GPU. It runs concurrently with an SQLite FTS5 Full-Text index (Keyword). The results are mathematically blended using Reciprocal Rank Fusion (RRF), ensuring that searching for a vague concept ("make a sphere") and searching for an exact API call (`hou.SopNode.geometry()`) both return perfectly accurate results.
 
 ### Short-Term Context vs. Long-Term Memory
-The UI includes a `/compact` command to prevent token limits from maxing out. 
 - **Short-Term Context:** `/compact` summarizes the current chat window.
 - **Long-Term Memory:** `/compact` has **zero effect** on the Vector DB. The Vector DB is permanent Long-Term Memory. Even if your chat history is completely wiped, the skills the agent learned remain permanently accessible.
-
-### Managing Memory
-If you accidentally save a bad skill, or if a particular workflow becomes outdated, you are in full control. The **"🧠 Manage Memory"** button in the UI opens a list of all your saved vector skills, allowing you to manually delete anything you want the agent to forget.

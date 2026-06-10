@@ -21,6 +21,13 @@ def create_docs_table(db_path):
         )
     """)
     cursor.execute("""
+        CREATE VIRTUAL TABLE IF NOT EXISTS houdini_docs_fts USING fts5(
+            title, 
+            content, 
+            url
+        )
+    """)
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS houdini_ingest_status (
             prefix TEXT PRIMARY KEY,
             status TEXT
@@ -50,6 +57,13 @@ def insert_houdini_doc(db_path, title, content, url, embedding):
         "INSERT INTO houdini_docs (id, embedding) VALUES (?, ?)",
         (doc_id, embedding_bytes),
     )
+
+    # Insert FTS5
+    conn.execute(
+        "INSERT INTO houdini_docs_fts (rowid, title, content, url) VALUES (?, ?, ?, ?)",
+        (doc_id, title, content, url),
+    )
+
     conn.commit()
     return doc_id
 
@@ -80,6 +94,14 @@ def delete_houdini_docs_by_prefix(db_path, prefix):
         (f"{prefix}/%",),
     )
 
+    conn.execute(
+        """
+        DELETE FROM houdini_docs_fts 
+        WHERE rowid IN (SELECT id FROM houdini_docs_meta WHERE url LIKE ?)
+    """,
+        (f"{prefix}/%",),
+    )
+
     conn.execute("DELETE FROM houdini_docs_meta WHERE url LIKE ?", (f"{prefix}/%",))
     conn.execute("DELETE FROM houdini_ingest_status WHERE prefix = ?", (prefix,))
 
@@ -87,7 +109,7 @@ def delete_houdini_docs_by_prefix(db_path, prefix):
     return True
 
 
-def search_houdini_docs(db_path, query_embedding, limit=5):
+def search_houdini_docs(db_path, query_embedding, query_text, limit=5, threshold=1.0):
     if not HAS_SQLITE_VEC:
         return []
     conn = get_connection(db_path)
@@ -95,15 +117,42 @@ def search_houdini_docs(db_path, query_embedding, limit=5):
 
     query_bytes = struct.pack(f"{len(query_embedding)}f", *query_embedding)
 
-    # vec_distance_L2 search
-    cursor = conn.execute(
+    # 1. Vector Search
+    vec_cursor = conn.execute(
         """
         SELECT m.id, m.title, m.content, m.url, vec_distance_L2(v.embedding, ?) as distance
         FROM houdini_docs v
         JOIN houdini_docs_meta m ON v.id = m.id
+        WHERE distance <= ?
         ORDER BY distance ASC
         LIMIT ?
         """,
-        (query_bytes, limit),
+        (query_bytes, threshold, limit * 2),
     )
-    return [dict(row) for row in cursor.fetchall()]
+    vec_results = [dict(row) for row in vec_cursor.fetchall()]
+
+    # 2. FTS5 Search
+    from memory_db import _sanitize_fts_query, _reciprocal_rank_fusion
+
+    fts_results = []
+    fts_query = _sanitize_fts_query(query_text)
+    if fts_query:
+        try:
+            fts_cursor = conn.execute(
+                """
+                SELECT m.id, m.title, m.content, m.url, 0.0 as distance
+                FROM houdini_docs_fts f
+                JOIN houdini_docs_meta m ON f.rowid = m.id
+                WHERE houdini_docs_fts MATCH ?
+                ORDER BY rank
+                LIMIT ?
+                """,
+                (fts_query, limit * 2),
+            )
+            fts_results = [dict(row) for row in fts_cursor.fetchall()]
+        except Exception:
+            pass
+
+    fused_results = _reciprocal_rank_fusion(vec_results, fts_results)
+
+    return fused_results[:limit]

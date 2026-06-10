@@ -26,7 +26,9 @@ def search_api_docs(query):
 
         core = AIAgentCore()
         embedding = core.generate_embedding(query)
-        results = search_houdini_docs(core.db_path, embedding, limit=5)
+        results = search_houdini_docs(
+            core.db_path, embedding, query_text=query, limit=5
+        )
         if not results:
             return json.dumps(
                 {"status": "success", "message": "No related documentation found."}

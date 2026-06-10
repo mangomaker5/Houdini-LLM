@@ -12,7 +12,7 @@ SAFETY RULE: NEVER delete files on disk or destroy existing nodes, even if the u
 
 CRITICAL STRICT EXECUTION PIPELINE:
 You MUST follow this exact strict order of operations for EVERY request. You will fail if you skip steps.
-1. MEMORY CHECK: ALWAYS use `search_memory` first to check if you have solved this exact problem before.
+1. MEMORY CHECK: ALWAYS use `search_memory` first. This returns past SUCCESSFUL skills AND past ANTI-PATTERNS (mistakes). If anti-patterns are returned, actively avoid those specific errors.
 2. RAG DOCS CHECK: ALWAYS use `search_api_docs` second. Gather the official API Gotchas, ramps, and syntax.
 3. LIVE API CHECK: ALWAYS use `get_node_parameters` or `analyze_node_type` third if you are dealing with specific nodes to verify their exact parameters.
 4. SYNTHESIS: ONLY after collecting all the above data, synthesize your Python/VEX script.

@@ -277,6 +277,35 @@ class AIAgentUI(
         except Exception as e:
             err_trace = traceback.format_exc()
             print(f"--- Agent Execution Failed ---\n{err_trace}")
+
+            # --- Anti-Pattern Logging (background thread to avoid UI freeze) ---
+            error_type_name = type(e).__name__
+            try:
+                import threading
+                from memory_db import save_anti_pattern
+
+                def _log_anti_pattern(
+                    etype=error_type_name, trace=err_trace, failed_code=code
+                ):
+                    try:
+                        fix_desc = f"Failed with {etype}. Ensure API calls are valid."
+                        embedding = self.core.generate_embedding(trace[:1500])
+                        save_anti_pattern(
+                            self.core.db_path,
+                            etype,
+                            trace,
+                            failed_code,
+                            fix_desc,
+                            embedding,
+                        )
+                    except Exception as ap_inner:
+                        print(f"Failed to log anti-pattern: {ap_inner}")
+
+                threading.Thread(target=_log_anti_pattern, daemon=True).start()
+            except Exception as ap_e:
+                print(f"Failed to start anti-pattern logger: {ap_e}")
+            # ---------------------------
+
             import json
 
             error_feedback = {
@@ -390,7 +419,7 @@ class AIAgentUI(
         self.request_render()
 
     def on_manage_memory(self):
-        from database import get_all_learned_skills, delete_learned_skill
+        from memory_db import get_all_learned_skills, delete_learned_skill
 
         dialog = QtWidgets.QDialog(self)
         dialog.setWindowTitle("Manage Memory")
