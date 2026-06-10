@@ -8,6 +8,7 @@ echo This process will generate vector embeddings for the
 echo official Houdini documentation.
 echo.
 
+set PYTHONUNBUFFERED=1
 ".venv\Scripts\python.exe" "scripts\python\rag\ingest.py"
 
 echo.

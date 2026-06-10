@@ -20,6 +20,12 @@ def create_docs_table(db_path):
             created_at REAL
         )
     """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS houdini_ingest_status (
+            prefix TEXT PRIMARY KEY,
+            status TEXT
+        )
+    """)
     conn.commit()
 
 
@@ -46,6 +52,39 @@ def insert_houdini_doc(db_path, title, content, url, embedding):
     )
     conn.commit()
     return doc_id
+
+
+def mark_zip_ingested(db_path, prefix):
+    if not HAS_SQLITE_VEC:
+        return False
+    conn = get_connection(db_path)
+    conn.execute(
+        "INSERT OR REPLACE INTO houdini_ingest_status (prefix, status) VALUES (?, 'completed')",
+        (prefix,),
+    )
+    conn.commit()
+    return True
+
+
+def delete_houdini_docs_by_prefix(db_path, prefix):
+    if not HAS_SQLITE_VEC:
+        return False
+    conn = get_connection(db_path)
+
+    # Standard SQL subquery - fast, memory efficient, no regex, no variable limits
+    conn.execute(
+        """
+        DELETE FROM houdini_docs 
+        WHERE id IN (SELECT id FROM houdini_docs_meta WHERE url LIKE ?)
+    """,
+        (f"{prefix}/%",),
+    )
+
+    conn.execute("DELETE FROM houdini_docs_meta WHERE url LIKE ?", (f"{prefix}/%",))
+    conn.execute("DELETE FROM houdini_ingest_status WHERE prefix = ?", (prefix,))
+
+    conn.commit()
+    return True
 
 
 def search_houdini_docs(db_path, query_embedding, limit=5):
