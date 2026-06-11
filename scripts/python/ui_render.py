@@ -5,6 +5,23 @@ from chat_formatter import build_bubble
 
 
 class UIRenderMixin:
+    def _init_scroll_tracking(self):
+        """Call this after init_ui to hook scroll tracking."""
+        self._user_scrolled_up = False
+        self.chat_display.verticalScrollBar().valueChanged.connect(
+            self._on_scroll_changed
+        )
+
+    def _on_scroll_changed(self, value):
+        """Detect if the user has manually scrolled away from the bottom."""
+        vbar = self.chat_display.verticalScrollBar()
+        at_bottom = value >= vbar.maximum() - 50
+        if at_bottom:
+            self._user_scrolled_up = False
+        elif getattr(self, "current_agent_response", None):
+            # Only flag as "scrolled up" while streaming is active
+            self._user_scrolled_up = True
+
     # --- Render Engine ---
     def update_context_ui(self):
         if not self.core.session_id:
@@ -110,10 +127,11 @@ class UIRenderMixin:
             )
         full_html = f"<body style='background-color: #333333; color: #dfdfdf; font-family: sans-serif; font-size: 14px;'>{''.join(html_parts)}</body>"
         vbar = self.chat_display.verticalScrollBar()
+        old_max = vbar.maximum()
         saved_scroll = vbar.value()
 
-        # Determine if we are currently at the bottom (with a little padding)
-        was_at_bottom = saved_scroll >= vbar.maximum() - 25
+        # Use the scroll tracking flag to decide behavior
+        user_scrolled_up = getattr(self, "_user_scrolled_up", False)
 
         self.chat_display.setUpdatesEnabled(False)
         self.chat_display.setHtml(full_html)
@@ -121,15 +139,19 @@ class UIRenderMixin:
         # Force document layout calculation to update vbar.maximum() immediately
         self.chat_display.document().documentLayout().documentSize()
 
-        if was_at_bottom:
-            vbar.setValue(vbar.maximum())
+        if user_scrolled_up:
+            # User is reading older content — keep them at the same position
+            # Adjust for the delta in document height so the viewport stays stable
+            height_delta = vbar.maximum() - old_max
+            vbar.setValue(saved_scroll + height_delta)
         else:
-            vbar.setValue(saved_scroll)
+            # User is at the bottom — auto-scroll to follow new content
+            vbar.setValue(vbar.maximum())
 
         self.chat_display.setUpdatesEnabled(True)
 
         # Ensure scroll stays at the bottom after event loop processes painting
-        if was_at_bottom:
+        if not user_scrolled_up:
             QtCore.QTimer.singleShot(0, lambda: vbar.setValue(vbar.maximum()))
 
         self.update_context_ui()

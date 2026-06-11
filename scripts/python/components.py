@@ -9,6 +9,9 @@ class ElidedLabel(QtWidgets.QLabel):
         painter.setPen(self.palette().color(QtGui.QPalette.WindowText))
         painter.drawText(self.rect(), self.alignment(), elided)
 
+    def minimumSizeHint(self):
+        return QtCore.QSize(30, self.fontMetrics().height())
+
 
 class SessionItemWidget(QtWidgets.QWidget):
     clicked = QtCore.Signal(str)
@@ -28,12 +31,15 @@ class SessionItemWidget(QtWidgets.QWidget):
             self.setProperty("active", True)
 
         layout = QtWidgets.QHBoxLayout(self)
-        layout.setContentsMargins(10, 0, 5, 0)
+        layout.setContentsMargins(15, 0, 10, 0)
         layout.setSpacing(5)
 
         self.title_label = ElidedLabel(title)
         self.title_label.setObjectName("SessionTitleLabel")
         self.title_label.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, True)
+        self.title_label.setSizePolicy(
+            QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Preferred
+        )
 
         self.edit_btn = QtWidgets.QPushButton("Rename")
         self.edit_btn.setObjectName("SessionEditBtn")

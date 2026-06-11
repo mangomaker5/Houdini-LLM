@@ -39,6 +39,7 @@ class AIAgentUI(
         self.current_model_display = ""
         self.setStyleSheet(GLOBAL_STYLE)
         self.init_ui()
+        self._init_scroll_tracking()
         self.approve_btn.clicked.connect(self.on_approve_code)
         self.reject_btn.clicked.connect(self.on_reject_code)
         self.retry_btn.clicked.connect(self.on_retry_execution)
@@ -265,6 +266,7 @@ class AIAgentUI(
         self.needs_render = False
         self.last_ai_response = self.current_agent_response
         self.current_agent_response = None
+        self._user_scrolled_up = False
         self.send_btn.setText("↑")
         self.send_btn.setEnabled(True)
         self.new_chat_btn.setEnabled(True)

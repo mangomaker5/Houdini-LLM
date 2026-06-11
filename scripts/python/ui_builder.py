@@ -14,7 +14,7 @@ class UIBuilderMixin:
         sidebar_layout = QtWidgets.QVBoxLayout(self.sidebar)
         sidebar_layout.setContentsMargins(0, 0, 0, 0)
         sidebar_layout.setSpacing(0)
-        self.new_chat_btn = QtWidgets.QPushButton("＋ New")
+        self.new_chat_btn = QtWidgets.QPushButton("＋ New Session")
         self.new_chat_btn.setObjectName("NewChatButton")
         self.new_chat_btn.setCursor(QtCore.Qt.PointingHandCursor)
         self.new_chat_btn.clicked.connect(self.on_new_chat)
@@ -26,36 +26,13 @@ class UIBuilderMixin:
         self.session_container = QtWidgets.QWidget()
         self.session_container.setObjectName("SessionContainer")
         self.session_layout = QtWidgets.QVBoxLayout(self.session_container)
-        self.session_layout.setContentsMargins(10, 0, 10, 0)
+        self.session_layout.setContentsMargins(0, 0, 0, 0)
         self.session_layout.setSpacing(2)
         self.session_layout.setAlignment(QtCore.Qt.AlignTop)
         self.session_scroll.setWidget(self.session_container)
         self.manage_memory_btn = QtWidgets.QPushButton("🧠 Manage Memory")
         self.manage_memory_btn.setObjectName("ManageMemoryButton")
         self.manage_memory_btn.setCursor(QtCore.Qt.PointingHandCursor)
-        self.manage_memory_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3a3a3a;
-                border: none;
-                padding: 10px;
-                color: #dfdfdf;
-                font-weight: bold;
-                border-bottom: 1px solid #2b2b2b;
-            }
-            QPushButton:hover { background-color: #4a4a4a; }
-        """)
-
-        self.new_chat_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #19c37d;
-                border: none;
-                padding: 12px;
-                color: white;
-                font-weight: bold;
-                border-bottom: 1px solid #2b2b2b;
-            }
-            QPushButton:hover { background-color: #1ed78a; }
-        """)
 
         sidebar_layout.addWidget(self.new_chat_btn)
         sidebar_layout.addWidget(self.manage_memory_btn)

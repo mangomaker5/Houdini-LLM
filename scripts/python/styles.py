@@ -1,5 +1,20 @@
 # CSS styles for the Houdini AI Agent UI
 
+# Centralized Theme Colors
+THEME = {
+    "bg_app": "#333333",
+    "bg_panel": "#2b2b2b",
+    "bg_human_bubble": "#383838",
+    "bg_agent_bubble": "#2b2b2b",
+    "accent_yellow": "#f1c40f",
+    "accent_green": "#19c37d",
+    "accent_purple": "#ab68ff",
+    "accent_blue": "#3498db",
+    "text_main": "#dfdfdf",
+    "text_dim": "#aaaaaa",
+    "border_color": "#444444",
+}
+
 # Main application stylesheet
 GLOBAL_STYLE = """
     QWidget {
@@ -7,6 +22,9 @@ GLOBAL_STYLE = """
         color: #dfdfdf;
         font-family: "Segoe UI", "Helvetica Neue", Helvetica, sans-serif;
         font-size: 14px;
+    }
+    QDialog {
+        background-color: #333333;
     }
     QToolTip {
         color: #dfdfdf;
@@ -122,19 +140,20 @@ GLOBAL_STYLE = """
     #SessionContainer {
         background-color: transparent;
     }
-    #NewChatButton {
+    
+    /* Main Sidebar Buttons */
+    #NewChatButton, #ManageMemoryButton {
         background-color: transparent;
-        border: 1px solid #555555;
+        border: none;
         color: #dfdfdf;
-        border-radius: 6px;
-        padding: 10px;
-        margin: 10px;
+        padding: 12px 10px;
         font-weight: bold;
         font-size: 14px;
         text-align: left;
+        border-bottom: 1px solid #333333;
     }
-    #NewChatButton:hover {
-        background-color: #444444;
+    #NewChatButton:hover, #ManageMemoryButton:hover {
+        background-color: #3a3a3a;
     }
     
     /* Splitter Handle / Slider styling */
@@ -184,13 +203,14 @@ GLOBAL_STYLE = """
     /* Session Item Widget styling */
     QWidget#SessionItemWidget {
         background-color: transparent;
-        border-radius: 6px;
+        border-radius: 0px;
     }
     QWidget#SessionItemWidget:hover {
-        background-color: #444444;
+        background-color: #3a3a3a;
     }
     QWidget#SessionItemWidget[active="true"] {
-        background-color: #555555;
+        background-color: #3a3a3a;
+        border-left: 3px solid #f1c40f;
     }
     QLabel#SessionTitleLabel {
         color: #dfdfdf;
@@ -200,6 +220,7 @@ GLOBAL_STYLE = """
     }
     QWidget#SessionItemWidget[active="true"] QLabel#SessionTitleLabel {
         font-weight: bold;
+        color: #f1c40f;
     }
     QPushButton#SessionEditBtn, QPushButton#SessionDeleteBtn {
         background-color: #2b2b2b;

@@ -1,4 +1,5 @@
 import re
+from styles import THEME
 
 try:
     from pygments import highlight
@@ -213,7 +214,7 @@ def build_bubble(
         <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-top: 15px; margin-bottom: 15px;">
             <tr>
                 <td align="center">
-                    <div style="border-left: 2px solid #f1c40f; padding-left: 10px; color: #f1c40f; font-size: 12px; font-weight: bold;">
+                    <div style="border-left: 2px solid {THEME["accent_yellow"]}; padding-left: 10px; color: {THEME["accent_yellow"]}; font-size: 12px; font-weight: bold;">
                         ⚠️ {text}
                     </div>
                 </td>
@@ -232,10 +233,10 @@ def build_bubble(
             <tr>
                 <td width="30%"></td>
                 <td align="right">
-                    <div style="font-weight: bold; color: #4daafc; margin-bottom: 8px; font-size: 13px;">Human</div>
-                    <table border="0" cellpadding="14" cellspacing="0" bgcolor="#383838" style="border-radius: 18px;">
+                    <div style="font-weight: bold; color: {THEME["accent_blue"]}; margin-bottom: 8px; font-size: 13px;">Human</div>
+                    <table border="0" cellpadding="14" cellspacing="0" bgcolor="{THEME["bg_human_bubble"]}" style="border-radius: 18px;">
                         <tr>
-                            <td align="left" style="color: #dfdfdf; font-size: 14px; line-height: 1.6;">
+                            <td align="left" style="color: {THEME["text_main"]}; font-size: 14px; line-height: 1.6;">
                                 {html_content}
                             </td>
                         </tr>
@@ -247,10 +248,10 @@ def build_bubble(
     elif role in ("Agent", "Agent (MCP)"):
         if role == "Agent":
             title = "◆ HOUDINI-LLM"
-            color = "#19c37d"
+            color = THEME["accent_green"]
         else:
-            title = "◆ HOUDINI-LLM"
-            color = "#19c37d"
+            title = "◆ HOUDINI-LLM (MCP)"
+            color = THEME["accent_purple"]
 
         header_html = (
             f'<div style="font-weight: bold; color: {color}; margin-bottom: 8px; font-size: 15px;">{title}</div>'
@@ -273,9 +274,9 @@ def build_bubble(
             <tr>
                 <td align="left">
                     {header_html}
-                    <table border="0" cellpadding="14" cellspacing="0" bgcolor="#2b2b2b" style="border-radius: 18px;">
+                    <table border="0" cellpadding="14" cellspacing="0" bgcolor="{THEME["bg_agent_bubble"]}" style="border-radius: 18px;">
                         <tr>
-                            <td align="left" style="color: #dfdfdf; font-size: 14px; line-height: 1.6;">
+                            <td align="left" style="color: {THEME["text_main"]}; font-size: 14px; line-height: 1.6;">
                                 {html_content}
                                 {token_html}
                             </td>

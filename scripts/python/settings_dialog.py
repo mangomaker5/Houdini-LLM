@@ -8,9 +8,12 @@ class SettingsDialog(QtWidgets.QDialog):
         self.setWindowTitle("Settings")
         self.setFixedSize(450, 200)
 
-        self.setStyleSheet("""
-            QDialog { background-color: #202123; color: #ececf1; font-family: "Segoe UI", sans-serif; }
-            QLabel { color: #ececf1; font-size: 13px; }
+        from styles import GLOBAL_STYLE
+
+        self.setStyleSheet(
+            GLOBAL_STYLE
+            + """
+            QLabel { font-size: 13px; }
             QLineEdit {
                 background-color: #40414f; border: 1px solid #565869;
                 border-radius: 4px; padding: 8px; color: white;
@@ -31,7 +34,8 @@ class SettingsDialog(QtWidgets.QDialog):
             QPushButton#DeleteBtn:hover { background-color: #dc2626; }
             QLabel a { color: #19c37d; text-decoration: none; }
             QLabel a:hover { text-decoration: underline; }
-        """)
+        """
+        )
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setSpacing(15)

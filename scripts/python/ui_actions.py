@@ -150,8 +150,11 @@ class UIActionsMixin:
     def on_manage_memory(self):
         from memory_db import get_all_learned_skills, delete_learned_skill
 
+        from styles import GLOBAL_STYLE
+
         dialog = QtWidgets.QDialog(self)
         dialog.setWindowTitle("Manage Memory")
+        dialog.setStyleSheet(GLOBAL_STYLE)
         dialog.resize(800, 500)
         layout = QtWidgets.QVBoxLayout(dialog)
 
@@ -170,7 +173,7 @@ class UIActionsMixin:
 
         code_preview = QtWidgets.QTextBrowser()
         code_preview.setStyleSheet(
-            "background-color: #1e1e1e; color: #cccccc; font-family: 'Consolas', monospace;"
+            "background-color: #1e1e1e; border: 1px solid #444444; color: #cccccc; font-family: 'Consolas', monospace;"
         )
 
         def on_item_changed(current, previous):
@@ -190,7 +193,13 @@ class UIActionsMixin:
 
         btn_layout = QtWidgets.QHBoxLayout()
         delete_btn = QtWidgets.QPushButton("Delete Selected")
+        delete_btn.setStyleSheet(
+            "background-color: #ef4444; color: white; padding: 8px; border-radius: 4px;"
+        )
         close_btn = QtWidgets.QPushButton("Close")
+        close_btn.setStyleSheet(
+            "background-color: #444444; color: white; padding: 8px; border-radius: 4px;"
+        )
         btn_layout.addWidget(delete_btn)
         btn_layout.addWidget(close_btn)
         layout.addLayout(btn_layout)
