@@ -174,25 +174,16 @@ class UIActionsMixin:
         dialog.resize(900, 600)
         layout = QtWidgets.QVBoxLayout(dialog)
 
-        # Warning Label
-        warning_label = QtWidgets.QLabel(
-            "⚠️ WARNING: Deleting a skill permanently removes it from the database. It cannot be recovered unless you save it again from an active session."
-        )
-        warning_label.setObjectName("WarningLabel")
-        warning_label.setWordWrap(True)
-        layout.addWidget(warning_label)
+        splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
 
-        # Top Bar (Search + Stats)
-        top_bar = QtWidgets.QHBoxLayout()
+        # --- Left Panel (Table & Search) ---
+        left_panel = QtWidgets.QWidget()
+        left_layout = QtWidgets.QVBoxLayout(left_panel)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+
         search_box = QtWidgets.QLineEdit()
         search_box.setPlaceholderText("🔍 Search Title or Code...")
-        stats_label = QtWidgets.QLabel()
-
-        top_bar.addWidget(search_box, stretch=1)
-        top_bar.addWidget(stats_label)
-        layout.addLayout(top_bar)
-
-        splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
+        left_layout.addWidget(search_box)
 
         table = QtWidgets.QTableWidget()
         table.setColumnCount(4)
@@ -211,7 +202,12 @@ class UIActionsMixin:
         table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         table.setAlternatingRowColors(True)
         table.setSortingEnabled(True)
+        left_layout.addWidget(table)
 
+        stats_label = QtWidgets.QLabel()
+        left_layout.addWidget(stats_label)
+
+        # --- Right Panel (Code Preview) ---
         code_preview = QtWidgets.QTextBrowser()
         code_preview.setStyleSheet(
             "background-color: #1e1e1e; border: 1px solid #444444; color: #cccccc; font-family: 'Consolas', monospace;"
@@ -302,25 +298,37 @@ class UIActionsMixin:
 
         table.itemSelectionChanged.connect(on_selection_changed)
 
-        splitter.addWidget(table)
+        splitter.addWidget(left_panel)
         splitter.addWidget(code_preview)
         splitter.setSizes([500, 400])
 
         layout.addWidget(splitter)
 
+        # --- Bottom Bar ---
         btn_layout = QtWidgets.QHBoxLayout()
+
+        warning_label = QtWidgets.QLabel(
+            "⚠️ WARNING: Deleting a skill is permanent. It cannot be recovered."
+        )
+        warning_label.setObjectName("WarningLabel")
+        btn_layout.addWidget(warning_label)
+
+        btn_layout.addStretch()
+
         delete_btn = QtWidgets.QPushButton("Delete Selected")
         delete_btn.setToolTip("Permanently delete the selected skills")
         delete_btn.setStyleSheet(
             "background-color: #ef4444; color: white; padding: 8px; border-radius: 4px; font-weight: bold;"
         )
         delete_btn.setCursor(QtCore.Qt.PointingHandCursor)
+
         close_btn = QtWidgets.QPushButton("Close")
         close_btn.setToolTip("Close the Manage Memory window")
         close_btn.setStyleSheet(
             "background-color: #444444; color: white; padding: 8px; border-radius: 4px; font-weight: bold;"
         )
         close_btn.setCursor(QtCore.Qt.PointingHandCursor)
+
         btn_layout.addWidget(delete_btn)
         btn_layout.addWidget(close_btn)
         layout.addLayout(btn_layout)
@@ -355,7 +363,6 @@ class UIActionsMixin:
                     if s["id"] == skill_id:
                         skills.pop(i)
                         break
-                table.removeRow(row)
 
             populate_table()
 

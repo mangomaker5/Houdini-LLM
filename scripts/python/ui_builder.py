@@ -80,6 +80,9 @@ class UIBuilderMixin:
         self.context_progress.setMaximum(128000)
         self.context_progress.setFixedHeight(18)
         self.context_progress.setMaximumWidth(280)
+        self.context_progress.setToolTip(
+            "Current session token usage against the context limit"
+        )
 
         self.usage_label = QtWidgets.QLabel("💰 $0.00 · 0 tokens")
         self.usage_label.setStyleSheet(
@@ -88,6 +91,7 @@ class UIBuilderMixin:
             "border-radius: 4px; padding: 2px 8px;"
         )
         self.usage_label.setFixedHeight(18)
+        self.usage_label.setToolTip("Total application API cost and token consumption")
 
         ctx_bar.addWidget(self.context_progress)
         ctx_bar.addWidget(self.usage_label)
