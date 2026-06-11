@@ -82,11 +82,21 @@ def compact_session(core_ref, session_id, keep_last_n=5):
     # Extract the messages we want to summarize (everything before the last N)
     messages_to_summarize = messages[:-keep_last_n]
 
+    # Filter out meta-messages that should never be summarized
+    _SKIP_PREFIXES = (
+        "/compact", "/usage",                       # Slash commands
+        "**📊 Usage Report",                        # /usage output
+        "⏳ Compacting", "Running manual compaction", # Compact status
+        "--- Switched model to",                     # Model switch notices
+    )
+
     # Prepare the prompt for the LLM
     text_to_summarize = []
     for msg in messages_to_summarize:
         role = msg.get("role", "unknown")
         content = msg.get("content", "")
+        if any(content.startswith(prefix) for prefix in _SKIP_PREFIXES):
+            continue
         text_to_summarize.append(f"[{role.upper()}]: {content}")
 
     joined_text = "\n\n".join(text_to_summarize)

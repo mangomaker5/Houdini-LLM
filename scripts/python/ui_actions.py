@@ -5,8 +5,11 @@ from settings_dialog import SettingsDialog
 class UIActionsMixin:
     # --- Autocomplete ---
     def on_text_changed(self):
-        text = self.text_input.toPlainText()
-        self.cmd_popup.setVisible(text.startswith("/"))
+        text = self.text_input.toPlainText().strip()
+        # Only show popup when user is typing a bare slash command (no space yet).
+        # e.g. "/" or "/arn" → show popup.  "/arnold create light" → hide.
+        show = text.startswith("/") and " " not in text and text != "/compact" and text != "/usage"
+        self.cmd_popup.setVisible(show)
 
     def on_cmd_popup_selected(self, item):
         cmd = item.text().split(" ")[0]
