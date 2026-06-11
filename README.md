@@ -96,3 +96,4 @@ Houdini uses `.json` package files to load custom plugins.
 
 If you want to understand exactly how the internal architecture, intelligent RAG chunking, and code execution loops work under the hood, check out our dedicated documentation:
 - **[Agentic Workflow & Architecture](agentic_workflow.md)**
+- **[Agent Flow Deep Dive: Embeddings, Memory & Self-Learning](agent_flow_deep_dive.md)**
