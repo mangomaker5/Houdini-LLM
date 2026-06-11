@@ -414,30 +414,36 @@ class AIAgentCore:
 
                         # Do NOT yield tool_msg to the UI. Instead, send a status update.
                         if "on_status_update" in kwargs:
+                            from styles import THEME
+
                             status_map = {
                                 "search_memory": (
                                     "🧠 Searching Knowledge Base",
-                                    "#9b59b6",
+                                    THEME.get("accent_purple", "#9b59b6"),
                                 ),
                                 "search_api_docs": (
                                     "📚 Querying Houdini Docs",
-                                    "#3498db",
+                                    THEME.get("info", "#3498db"),
                                 ),
                                 "get_node_parameters": (
                                     "👁️ Inspecting Live Scene",
-                                    "#e67e22",
+                                    THEME.get("warning", "#e67e22"),
                                 ),
                                 "analyze_node_type": (
                                     "🔍 Analyzing Node Constraints",
-                                    "#f1c40f",
+                                    THEME.get("accent_yellow", "#f1c40f"),
                                 ),
                                 "propose_code_change": (
                                     "✍️ Synthesizing Python Script",
-                                    "#2ecc71",
+                                    THEME.get("success", "#2ecc71"),
                                 ),
                             }
                             msg, color = status_map.get(
-                                f_name, (f"✨ Running {f_name}", "#95a5a6")
+                                f_name,
+                                (
+                                    f"✨ Running {f_name}",
+                                    THEME.get("text_dim", "#95a5a6"),
+                                ),
                             )
                             kwargs["on_status_update"](msg, color)
 

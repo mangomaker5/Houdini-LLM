@@ -85,11 +85,7 @@ class UIBuilderMixin:
         )
 
         self.usage_label = QtWidgets.QLabel("💰 $0.00 · 0 tokens")
-        self.usage_label.setStyleSheet(
-            "color: #f1c40f; font-size: 10px; font-weight: bold; "
-            "background-color: #2b2b2b; border: 1px solid #f1c40f; "
-            "border-radius: 4px; padding: 2px 8px;"
-        )
+        self.usage_label.setObjectName("UsageLabel")
         self.usage_label.setFixedHeight(18)
         self.usage_label.setToolTip("Total application API cost and token consumption")
 

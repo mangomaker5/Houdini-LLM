@@ -13,6 +13,14 @@ THEME = {
     "text_main": "#dfdfdf",
     "text_dim": "#aaaaaa",
     "border_color": "#444444",
+    "success": "#19c37d",
+    "error": "#ff4a4a",
+    "warning": "#f1c40f",
+    "info": "#3498db",
+    "code_bg": "#1e1e1e",
+    "code_fg": "#cccccc",
+    "action_bg": "#444444",
+    "action_bg_hover": "#555555",
 }
 
 # Main application stylesheet
@@ -180,8 +188,18 @@ GLOBAL_STYLE = """
         height: 12px;
     }
     QProgressBar#ContextProgressBar::chunk {
-        background-color: #19c37d;
+        background-color: #3498db;
         border-radius: 3px;
+    }
+    
+    QLabel#UsageLabel {
+        color: #3498db;
+        font-size: 10px;
+        font-weight: bold;
+        background-color: #2b2b2b;
+        border: 1px solid #3498db;
+        border-radius: 4px;
+        padding: 2px 8px;
     }
     QProgressBar#ContextProgressBar[warning="true"]::chunk {
         background-color: #f1c40f;
@@ -253,8 +271,10 @@ GLOBAL_STYLE = """
         padding: 5px;
     }
     QListWidget#CommandPopup::item:selected {
-        background-color: #444444;
+        background-color: #ab68ff;
         color: white;
+        font-weight: bold;
+        border-radius: 4px;
     }
     
     /* --- REFACTORED INLINE STYLES --- */

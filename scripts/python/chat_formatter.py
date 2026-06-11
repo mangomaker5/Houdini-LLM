@@ -75,24 +75,24 @@ def format_markdown_to_html(
         )
 
         run_color = (
-            "#ffffff"
+            THEME["text_main"]
             if ("Success" in run_text or "Error" in run_text or "Failed" in run_text)
-            else "#19c37d"
+            else THEME["success"]
         )
         run_bg = (
-            "#19c37d"
+            THEME["success"]
             if "Success" in run_text
             else (
-                "#ff4a4a"
+                THEME["error"]
                 if ("Error" in run_text or "Failed" in run_text)
-                else "#444444"
+                else THEME["action_bg"]
             )
         )
-        copy_color = "#19c37d" if "Copied" in copy_text else "#dfdfdf"
+        copy_color = THEME["success"] if "Copied" in copy_text else THEME["text_main"]
         save_color = (
-            "#19c37d"
+            THEME["success"]
             if "Saved" in save_text
-            else ("#ff4a4a" if "Failed" in save_text else "#f1c40f")
+            else (THEME["error"] if "Failed" in save_text else THEME["warning"])
         )
 
         actions_html = ""
@@ -100,7 +100,7 @@ def format_markdown_to_html(
             actions_html = f'''
                                 <table border="0" cellpadding="4" cellspacing="0">
                                     <tr>
-                                        <td bgcolor="#444444" style="border-radius: 4px;">
+                                        <td bgcolor="{THEME["action_bg"]}" style="border-radius: 4px;">
                                             <a href="save_code:{block_id}" style="color: {save_color}; text-decoration: none;">{save_text}</a>
                                         </td>
                                         <td width="5"></td>
@@ -108,7 +108,7 @@ def format_markdown_to_html(
                                             <a href="run_code:{block_id}" style="color: {run_color}; text-decoration: none;">{run_text}</a>
                                         </td>
                                         <td width="5"></td>
-                                        <td bgcolor="#444444" style="border-radius: 4px;">
+                                        <td bgcolor="{THEME["action_bg"]}" style="border-radius: 4px;">
                                             <a href="copy_code:{block_id}" style="color: {copy_color}; text-decoration: none;">{copy_text}</a>
                                         </td>
                                     </tr>
@@ -116,12 +116,12 @@ def format_markdown_to_html(
             '''
 
         html = f"""
-        <table width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#1e1e1e" style="margin-top: 15px; margin-bottom: 15px; border-radius: 6px;">
+        <table width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="{THEME["code_bg"]}" style="margin-top: 15px; margin-bottom: 15px; border-radius: 6px;">
             <tr>
-                <td bgcolor="#2b2b2b" style="padding: 5px 10px; border-bottom: 1px solid #444444;">
+                <td bgcolor="{THEME["bg_panel"]}" style="padding: 5px 10px; border-bottom: 1px solid {THEME["border_color"]};">
                     <table width="100%" border="0" cellpadding="0" cellspacing="0">
                         <tr>
-                            <td align="left" style="color: #aaaaaa; font-size: 12px; font-weight: bold;">{lang}</td>
+                            <td align="left" style="color: {THEME["text_dim"]}; font-size: 12px; font-weight: bold;">{lang}</td>
                             <td align="right" style="font-size: 11px; font-weight: bold;">
                                 {actions_html}
                             </td>
@@ -131,7 +131,7 @@ def format_markdown_to_html(
             </tr>
             <tr>
                 <td style="padding: 10px;">
-                    <pre style="color: #cccccc; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; margin: 0; white-space: pre-wrap; word-wrap: break-word;">{display_code}</pre>
+                    <pre style="color: {THEME["code_fg"]}; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; margin: 0; white-space: pre-wrap; word-wrap: break-word;">{display_code}</pre>
                 </td>
             </tr>
         </table>
@@ -150,7 +150,11 @@ def format_markdown_to_html(
     # Format Tool Execution tags BEFORE markdown
     text = re.sub(
         r"(?:\n\s*)*___TOOL_EXEC_(.*?)___(?:\n\s*)*",
-        r"\n\n<div style='color: #888888; font-style: italic; font-size: 11px; margin: 4px 0px; background-color: #2b2b2b; padding: 2px 8px; border-radius: 4px; display: inline-block;'>⚙ Executing tool: <b>\1</b></div>\n\n",
+        r"\n\n<div style='color: "
+        + THEME["text_dim"]
+        + r"; font-style: italic; font-size: 11px; margin: 4px 0px; background-color: "
+        + THEME["bg_panel"]
+        + r"; padding: 2px 8px; border-radius: 4px; display: inline-block;'>⚙ Executing tool: <b>\1</b></div>\n\n",
         text,
     )
 
@@ -162,9 +166,11 @@ def format_markdown_to_html(
         # Enhance PySide6 table rendering
         text = text.replace(
             "<table>",
-            '<table border="1" cellspacing="0" cellpadding="4" style="border-collapse: collapse; border-color: #555555; margin-top: 10px; margin-bottom: 10px;">',
+            f'<table border="1" cellspacing="0" cellpadding="4" style="border-collapse: collapse; border-color: {THEME["action_bg_hover"]}; margin-top: 10px; margin-bottom: 10px;">',
         )
-        text = text.replace("<th>", '<th bgcolor="#333333" style="padding: 5px;">')
+        text = text.replace(
+            "<th>", f'<th bgcolor="{THEME["bg_app"]}" style="padding: 5px;">'
+        )
         text = text.replace("<td>", '<td style="padding: 5px;">')
     except ImportError:
         text = text.replace("\n", "<br/>")
@@ -196,14 +202,19 @@ def build_bubble(
     else:
         text = str(text)
 
+    is_agent = role in ("Agent", "Agent (MCP)")
+    html_content = format_markdown_to_html(
+        text, code_blocks_store, action_states, show_actions=is_agent, db_path=db_path
+    )
+
     # Special Check for Model Change system message
     if role == "System" and "Switched model to" in text:
         return f"""
         <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-top: 15px; margin-bottom: 15px;">
             <tr>
                 <td align="center">
-                    <div style="border-left: 2px solid #555; padding-left: 10px; color: #888; font-size: 12px; font-style: italic;">
-                        {text}
+                    <div style="border: 1px solid {THEME["accent_blue"]}; background-color: {THEME["bg_panel"]}; border-radius: 6px; padding: 8px 16px; color: {THEME["accent_blue"]}; font-size: 13px; font-weight: bold; display: inline-block;">
+                        🔄 {text}
                     </div>
                 </td>
             </tr>
@@ -214,18 +225,32 @@ def build_bubble(
         <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-top: 15px; margin-bottom: 15px;">
             <tr>
                 <td align="center">
-                    <div style="border-left: 2px solid {THEME["accent_yellow"]}; padding-left: 10px; color: {THEME["accent_yellow"]}; font-size: 12px; font-weight: bold;">
+                    <div style="border: 1px solid {THEME["accent_yellow"]}; background-color: {THEME["bg_panel"]}; border-radius: 6px; padding: 8px 16px; color: {THEME["accent_yellow"]}; font-size: 13px; font-weight: bold; display: inline-block;">
                         ⚠️ {text}
                     </div>
                 </td>
             </tr>
         </table>
         """
-
-    is_agent = role in ("Agent", "Agent (MCP)")
-    html_content = format_markdown_to_html(
-        text, code_blocks_store, action_states, show_actions=is_agent, db_path=db_path
-    )
+    elif role == "System" and "Usage Report" in text:
+        color = THEME["accent_blue"]
+        return f"""
+        <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-top: 15px; margin-bottom: 25px;">
+            <tr>
+                <td align="left">
+                    <div style="font-weight: bold; color: {color}; margin-bottom: 8px; font-size: 15px;">◆ Usage Summary</div>
+                    <table border="0" cellpadding="14" cellspacing="0" bgcolor="{THEME["bg_panel"]}" style="border-radius: 18px;">
+                        <tr>
+                            <td align="left" style="color: {color}; font-size: 14px; line-height: 1.6;">
+                                {html_content}
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+                <td width="10%"></td>
+            </tr>
+        </table>
+        """
 
     if role == "User":
         return f"""
@@ -250,7 +275,7 @@ def build_bubble(
             title = "◆ HOUDINI-LLM"
             color = THEME["accent_green"]
         else:
-            title = "◆ HOUDINI-LLM (MCP)"
+            title = "◆ HOUDINI-LLM (Action)"
             color = THEME["accent_purple"]
 
         header_html = (
@@ -264,7 +289,7 @@ def build_bubble(
         if prompt_tokens > 0 or completion_tokens > 0:
             total = prompt_tokens + completion_tokens
             token_html = (
-                f'<div style="color: #666666; font-size: 10px; margin-top: 6px; text-align: right;">'
+                f'<div style="color: {THEME["text_dim"]}; font-size: 10px; margin-top: 6px; text-align: right;">'
                 f"⚡ {total:,} tokens used"
                 f"</div>"
             )
@@ -298,13 +323,13 @@ def build_bubble(
         </table>
         """
     else:  # System or Thinking
-        color = "#ab68ff" if role == "Thinking" else "#aaaaaa"
+        color = THEME["accent_purple"] if role == "Thinking" else THEME["text_dim"]
         return f"""
         <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-top: 15px; margin-bottom: 25px;">
             <tr>
                 <td align="left">
                     <div style="font-weight: bold; color: {color}; margin-bottom: 8px; font-size: 15px;">◆ System</div>
-                    <table border="0" cellpadding="14" cellspacing="0" bgcolor="#2b2b2b" style="border-radius: 18px;">
+                    <table border="0" cellpadding="14" cellspacing="0" bgcolor="{THEME["bg_panel"]}" style="border-radius: 18px;">
                         <tr>
                             <td align="left" style="color: {color}; font-size: 14px; line-height: 1.6; font-style: italic;">
                                 {html_content}

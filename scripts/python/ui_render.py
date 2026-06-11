@@ -102,11 +102,13 @@ class UIRenderMixin:
             )
 
         if getattr(self, "is_agent_thinking", False):
-            msg = getattr(self, "thinking_base_text", "✨ Thinking")
-            dots = "." * getattr(self, "thinking_dots", 0)
-            color = getattr(self, "thinking_color", "#f1c40f")
+            import animations
 
-            styled_role = f"<span style='color: {color}'>{msg}{dots}</span>"
+            msg = getattr(self, "thinking_base_text", "Thinking...")
+            dots = getattr(self, "thinking_dots", 0)
+            color = getattr(self, "thinking_color", None)
+            styled_role = animations.render_dynamic_agent_status(dots, msg, color)
+
             html_parts.append(
                 build_bubble(
                     "Agent Status",

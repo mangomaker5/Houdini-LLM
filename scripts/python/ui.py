@@ -2,7 +2,7 @@ from PySide6 import QtWidgets, QtCore
 
 from core import AIAgentCore
 from houdini_context import HoudiniContext
-from styles import GLOBAL_STYLE
+from styles import GLOBAL_STYLE, THEME
 
 from workers import AgentWorker
 
@@ -176,10 +176,10 @@ class AIAgentUI(
 
             # Show animated status (same pattern as tool calls)
             self.is_agent_thinking = True
-            self.thinking_base_text = "⏳ Compacting Context"
-            self.thinking_color = "#e67e22"
+            self.thinking_base_text = "Compacting Context"
+            self.thinking_color = THEME["info"]
             self.thinking_dots = 0
-            self.thinking_timer.start(400)
+            self.thinking_timer.start(100)
 
             # Full UI lockdown during compaction
             self.send_btn.setEnabled(False)
@@ -225,14 +225,14 @@ class AIAgentUI(
         full_sys_context = global_prompt + "\n\n" + sys_prompt + "\n\n" + hou_context
 
         agent_mode_active = True
-        self.thinking_base_text = "✨ Thinking"
-        self.thinking_color = "#f1c40f"
+        self.thinking_base_text = "Thinking"
+        self.thinking_color = THEME["info"]
         self.is_agent_thinking = True
         self.current_agent_response = ""
         self.first_chunk_received = False
         self.request_render()
         self.thinking_dots = 0
-        self.thinking_timer.start(400)
+        self.thinking_timer.start(100)
 
         self.worker = AgentWorker(
             self.core, user_text, full_sys_context, agent_mode_active, self
@@ -245,7 +245,7 @@ class AIAgentUI(
 
     def animate_thinking(self):
         if getattr(self, "is_agent_thinking", False):
-            self.thinking_dots = (self.thinking_dots + 1) % 4
+            self.thinking_dots += 1
             self.request_render()
 
     def on_agent_status_update(self, msg, color):
