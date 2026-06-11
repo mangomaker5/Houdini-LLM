@@ -24,9 +24,12 @@ def search_api_docs(query, core_ref=None):
         from rag.vector_db import search_houdini_docs
 
         if core_ref is None:
-            from core import AIAgentCore
-
-            core_ref = AIAgentCore()
+            return json.dumps(
+                {
+                    "status": "error",
+                    "message": "Internal error: core_ref not provided to search_api_docs.",
+                }
+            )
 
         embedding = core_ref.generate_embedding(query)
         results = search_houdini_docs(

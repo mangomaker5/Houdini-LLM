@@ -3,7 +3,6 @@ from PySide6 import QtWidgets, QtCore
 from core import AIAgentCore
 from houdini_context import HoudiniContext
 from styles import GLOBAL_STYLE
-import context_manager
 
 from workers import AgentWorker
 
@@ -142,16 +141,53 @@ class AIAgentUI(
             return
         self.text_input.clear()
         self.cmd_popup.hide()
+        if user_text.lower() == "/usage":
+            import database
+
+            usage = database.get_global_usage(self.core.db_path)
+            total_tokens = usage["total_tokens"]
+            total_cost = usage["total_cost"]
+            total_calls = usage["total_calls"]
+            prompt_t = usage["total_prompt"]
+            completion_t = usage["total_completion"]
+
+            report = (
+                f"**📊 Usage Report (All Sessions)**\n\n"
+                f"| Metric | Value |\n"
+                f"|---|---|\n"
+                f"| Total API Calls | {total_calls:,} |\n"
+                f"| Prompt Tokens | {prompt_t:,} |\n"
+                f"| Completion Tokens | {completion_t:,} |\n"
+                f"| Total Tokens | {total_tokens:,} |\n"
+                f"| Total Cost | ${total_cost:.6f} |\n"
+            )
+            self.core.append_to_history("user", user_text)
+            self.core.append_to_history("system", report)
+            self.request_render()
+            return
+
         if user_text.lower() == "/compact":
             self.core.append_to_history("user", user_text)
-            self.core.append_to_history("system", "Running manual compaction...")
-            self._perform_render()
-            QtWidgets.QApplication.processEvents()
-            success, msg = context_manager.compact_session(
-                self.core, self.core.session_id
-            )
-            self.core.append_to_history("system", msg)
             self.request_render()
+
+            # Show animated status (same pattern as tool calls)
+            self.is_agent_thinking = True
+            self.thinking_base_text = "⏳ Compacting Context"
+            self.thinking_color = "#e67e22"
+            self.thinking_dots = 0
+            self.thinking_timer.start(400)
+
+            # Disable send while compaction runs in the background
+            self.send_btn.setEnabled(False)
+            self.text_input.setEnabled(False)
+
+            from workers import CompactWorker
+
+            self._compact_worker = CompactWorker(self.core, self.core.session_id, self)
+            self._compact_worker.finished_compaction.connect(
+                self._on_compaction_finished
+            )
+            self._compact_worker.start()
             return
 
         # Start Generation
@@ -226,6 +262,17 @@ class AIAgentUI(
         self.text_input.setFocus()
         self.refresh_session_list()
         self._perform_render()
+
+    def _on_compaction_finished(self, success, message):
+        """Callback from CompactWorker — re-enable UI and show result."""
+        self.is_agent_thinking = False
+        self.thinking_timer.stop()
+        self.core.append_to_history("system", message)
+        self.send_btn.setEnabled(True)
+        self.text_input.setEnabled(True)
+        self.text_input.setFocus()
+        self.refresh_session_list()
+        self.request_render()
 
     def on_code_proposed(self, code):
         if code:
@@ -328,8 +375,10 @@ class AIAgentUI(
 
     def on_retry_execution(self):
         self.review_panel.hide()
+        # The full error JSON is already saved to history by on_approve_code.
+        # Send a short instruction instead of duplicating the entire error blob.
         self.text_input.setPlainText(
-            getattr(self, "last_error_message", "Retry please.")
+            "Please analyze the error above and propose fixed code."
         )
         self.on_send_clicked()
 

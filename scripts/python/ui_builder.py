@@ -86,19 +86,28 @@ class UIBuilderMixin:
         top_bar.addWidget(self.settings_btn)
         self.chat_display = ChatTextBrowser()
         self.chat_display.document().setDefaultStyleSheet("")
-        # Context Progress Bar (compact, left-aligned)
+        # Session Window Progress Bar (compact, left-aligned)
         ctx_bar = QtWidgets.QHBoxLayout()
         ctx_bar.setContentsMargins(0, 0, 0, 5)
         self.context_progress = QtWidgets.QProgressBar()
         self.context_progress.setObjectName("ContextProgressBar")
         self.context_progress.setTextVisible(True)
-        self.context_progress.setFormat("Context: 0 / 50000 tokens")
+        self.context_progress.setFormat("Session: 0 / 128,000 tokens")
         self.context_progress.setMinimum(0)
-        self.context_progress.setMaximum(50000)
+        self.context_progress.setMaximum(128000)
         self.context_progress.setFixedHeight(18)
         self.context_progress.setMaximumWidth(280)
 
+        self.usage_label = QtWidgets.QLabel("💰 $0.00 · 0 tokens")
+        self.usage_label.setStyleSheet(
+            "color: #888888; font-size: 10px; font-weight: bold; "
+            "background-color: #2b2b2b; border: 1px solid #444444; "
+            "border-radius: 4px; padding: 2px 8px;"
+        )
+        self.usage_label.setFixedHeight(18)
+
         ctx_bar.addWidget(self.context_progress)
+        ctx_bar.addWidget(self.usage_label)
         ctx_bar.addStretch()
         # Command Autocomplete Popup
         self.cmd_popup = QtWidgets.QListWidget()
@@ -106,12 +115,13 @@ class UIBuilderMixin:
         self.cmd_popup.addItems(
             [
                 "/compact - Force manual context summarization",
+                "/usage - Show token usage and cost report",
                 "/arnold - Route to Arnold Expert",
                 "/fx - Route to FX Expert",
                 "/solaris - Route to Solaris/USD Expert",
             ]
         )
-        self.cmd_popup.setFixedHeight(100)
+        self.cmd_popup.setFixedHeight(125)
         self.cmd_popup.hide()
         self.cmd_popup.itemClicked.connect(self.on_cmd_popup_selected)
         # Input Area

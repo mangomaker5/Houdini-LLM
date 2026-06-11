@@ -163,7 +163,13 @@ def format_markdown_to_html(
 
 
 def build_bubble(
-    role, text, code_blocks_store=None, action_states=None, show_header=True
+    role,
+    text,
+    code_blocks_store=None,
+    action_states=None,
+    show_header=True,
+    prompt_tokens=0,
+    completion_tokens=0,
 ):
     if code_blocks_store is None:
         code_blocks_store = {}
@@ -229,14 +235,24 @@ def build_bubble(
             title = "◆ HOUDINI-LLM"
             color = "#19c37d"
         else:
-            title = "⚡ Agent Mode Auto"
-            color = "#f1c40f"
+            title = "◆ HOUDINI-LLM"
+            color = "#19c37d"
 
         header_html = (
             f'<div style="font-weight: bold; color: {color}; margin-bottom: 8px; font-size: 15px;">{title}</div>'
             if show_header
             else ""
         )
+
+        # Per-message token annotation (only if real data exists)
+        token_html = ""
+        if prompt_tokens > 0 or completion_tokens > 0:
+            total = prompt_tokens + completion_tokens
+            token_html = (
+                f'<div style="color: #666666; font-size: 10px; margin-top: 6px; text-align: right;">'
+                f"⚡ {total:,} tokens used"
+                f"</div>"
+            )
 
         return f"""
         <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-top: 5px; margin-bottom: 25px;">
@@ -247,6 +263,7 @@ def build_bubble(
                         <tr>
                             <td align="left" style="color: #dfdfdf; font-size: 14px; line-height: 1.6;">
                                 {html_content}
+                                {token_html}
                             </td>
                         </tr>
                     </table>

@@ -201,9 +201,12 @@ def search_memory(query, core_ref=None):
         from memory_db import search_learned_skills, search_anti_patterns
 
         if core_ref is None:
-            from core import AIAgentCore
-
-            core_ref = AIAgentCore()
+            return json.dumps(
+                {
+                    "status": "error",
+                    "message": "Internal error: core_ref not provided to search_memory.",
+                }
+            )
 
         embedding = core_ref.generate_embedding(query)
         skills = search_learned_skills(

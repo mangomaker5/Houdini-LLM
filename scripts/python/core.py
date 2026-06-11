@@ -96,9 +96,16 @@ class AIAgentCore:
             return []
         return database.get_messages(self.db_path, self.session_id)
 
-    def append_to_history(self, role, content):
+    def append_to_history(self, role, content, prompt_tokens=0, completion_tokens=0):
         if self.session_id:
-            database.add_message(self.db_path, self.session_id, role, content)
+            database.add_message(
+                self.db_path,
+                self.session_id,
+                role,
+                content,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+            )
 
             # If this is the first user message, rename the session title automatically
             if role == "user":
@@ -184,6 +191,21 @@ class AIAgentCore:
                 )
                 with urllib.request.urlopen(req, timeout=20) as response:
                     res = json.loads(response.read().decode("utf-8"))
+
+                    # Log embedding usage for billing
+                    usage = res.get("usage", {})
+                    if usage:
+                        database.log_usage(
+                            self.db_path,
+                            self.session_id,
+                            "embedding",
+                            "openai/text-embedding-3-small",
+                            usage.get("prompt_tokens", 0),
+                            0,
+                            usage.get("total_tokens", 0),
+                            usage.get("cost", 0.0),
+                        )
+
                     return res["data"][0]["embedding"]
             except urllib.error.HTTPError as e:
                 if attempt == 2:
@@ -225,8 +247,23 @@ class AIAgentCore:
                 headers=headers,
                 method="POST",
             )
-            with urllib.request.urlopen(req, timeout=20) as response:
+            with urllib.request.urlopen(req, timeout=60) as response:
                 result = json.loads(response.read().decode("utf-8"))
+
+                # Log usage for billing
+                usage = result.get("usage", {})
+                if usage:
+                    database.log_usage(
+                        self.db_path,
+                        self.session_id,
+                        "summary",
+                        self.model,
+                        usage.get("prompt_tokens", 0),
+                        usage.get("completion_tokens", 0),
+                        usage.get("total_tokens", 0),
+                        usage.get("cost", 0.0),
+                    )
+
                 if "choices" in result and len(result["choices"]) > 0:
                     return result["choices"][0]["message"]["content"]
                 return "Error: Empty response."
@@ -257,6 +294,8 @@ class AIAgentCore:
 
         complete_response = ""
         syntax_retries = 0
+        total_prompt_tokens = 0
+        total_completion_tokens = 0
 
         # Loop to support multiple tool call iterations
         while True:
@@ -328,6 +367,27 @@ class AIAgentCore:
                                                     tool_calls_buffer[idx]["function"][
                                                         "arguments"
                                                     ] += f["arguments"]
+
+                                # Capture usage from final chunk (separate from choices)
+                                if "usage" in chunk:
+                                    usage = chunk["usage"]
+                                    round_prompt = usage.get("prompt_tokens", 0)
+                                    round_completion = usage.get("completion_tokens", 0)
+                                    round_total = usage.get("total_tokens", 0)
+                                    round_cost = usage.get("cost", 0.0)
+                                    total_prompt_tokens += round_prompt
+                                    total_completion_tokens += round_completion
+                                    database.log_usage(
+                                        self.db_path,
+                                        self.session_id,
+                                        "chat",
+                                        self.model,
+                                        round_prompt,
+                                        round_completion,
+                                        round_total,
+                                        round_cost,
+                                    )
+
                             except Exception as e:
                                 print(f"Error parsing chunk: {e}")
 
@@ -425,7 +485,12 @@ class AIAgentCore:
                 # If no tool calls, we are completely done
                 if complete_response:
                     role_to_save = "assistant_mcp" if agent_mode else "assistant"
-                    self.append_to_history(role_to_save, complete_response)
+                    self.append_to_history(
+                        role_to_save,
+                        complete_response,
+                        prompt_tokens=total_prompt_tokens,
+                        completion_tokens=total_completion_tokens,
+                    )
                 break
 
             except urllib.error.HTTPError as e:

@@ -1,3 +1,5 @@
+import re
+
 import database
 
 
@@ -12,9 +14,9 @@ def calculate_session_usage(db_path, session_id):
     """Calculates the current token usage for a session."""
     session_details = database.get_session_details(db_path, session_id)
     if not session_details:
-        return 0, 50000, 0.0
+        return 0, 128000, 0.0
 
-    token_limit = session_details.get("token_limit", 50000)
+    token_limit = session_details.get("token_limit", 128000)
     summary = session_details.get("summary", "")
 
     messages = database.get_messages(db_path, session_id)
@@ -30,6 +32,33 @@ def calculate_session_usage(db_path, session_id):
         usage_percentage = (current_tokens / token_limit) * 100.0
 
     return current_tokens, token_limit, usage_percentage
+
+
+# ---------------------------------------------------------------------------
+# Pre-processing: Strip code blocks & tool outputs before summarization
+# ---------------------------------------------------------------------------
+
+# Matches fenced code blocks: ```lang ... ``` (greedy, DOTALL)
+_CODE_BLOCK_RE = re.compile(r"```[\w]*\n.*?```", re.DOTALL)
+
+# Matches inline tool execution markers injected by core.py
+_TOOL_EXEC_RE = re.compile(r"___TOOL_EXEC_\w+___")
+
+
+def _strip_heavy_content(text):
+    """Replace large code blocks and tool markers with lightweight tombstones.
+
+    This keeps the summarizer focused on conversational milestones and decisions
+    rather than burning tokens on raw Python/VEX syntax that is already
+    preserved permanently in the Vector DB (Learned Skills & Anti-Patterns).
+    """
+    # Replace fenced code blocks with a tombstone
+    text = _CODE_BLOCK_RE.sub("[Code Block Removed — Preserved in Memory]", text)
+
+    # Replace tool execution markers with a clean tag
+    text = _TOOL_EXEC_RE.sub("[Tool Executed]", text)
+
+    return text
 
 
 def compact_session(core_ref, session_id, keep_last_n=5):
@@ -62,13 +91,21 @@ def compact_session(core_ref, session_id, keep_last_n=5):
 
     joined_text = "\n\n".join(text_to_summarize)
 
+    # --- Smart pre-processing: strip code blocks & tool noise ---
+    joined_text = _strip_heavy_content(joined_text)
+
     system_prompt = (
-        "You are an expert technical summarizer for an AI Assistant system. "
-        "Your goal is to compress the provided chat history into a concise, dense summary. "
+        "You are an expert technical summarizer for a Houdini AI Agent system. "
+        "Your goal is to compress the provided chat history into a concise, dense summary.\n"
         "IMPORTANT RULES:\n"
-        "1. Retain all key facts, technical decisions, code snippets context, and milestones.\n"
-        "2. Discard conversational filler, pleasantries, and verbose formatting.\n"
-        "3. Combine the 'Previous Summary' with the 'New Messages' into one single unified summary paragraph or bulleted list.\n"
+        "1. Focus on HIGH-LEVEL MILESTONES: what the user asked for, what decisions were made, "
+        "what succeeded, and what failed.\n"
+        "2. Do NOT attempt to reproduce any code syntax. Code is already preserved in "
+        "the agent's long-term Vector DB memory (Learned Skills & Anti-Patterns).\n"
+        "3. Retain key facts: node paths, parameter names, error types, and technical decisions.\n"
+        "4. Discard conversational filler, pleasantries, and verbose formatting.\n"
+        "5. Combine the 'Previous Summary' with the 'New Messages' into one single "
+        "unified summary as a bulleted list of milestones.\n"
     )
 
     user_prompt = (
@@ -77,7 +114,7 @@ def compact_session(core_ref, session_id, keep_last_n=5):
         "Please provide the updated, unified summary now."
     )
 
-    # Call the LLM synchronously
+    # Call the LLM synchronously (caller is responsible for threading)
     try:
         new_summary = core_ref.generate_response_sync(
             user_prompt, system_context=system_prompt

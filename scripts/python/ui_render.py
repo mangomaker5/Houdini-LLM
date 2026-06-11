@@ -1,5 +1,6 @@
 from PySide6 import QtCore
 import context_manager
+import database
 from chat_formatter import build_bubble
 
 
@@ -8,18 +9,36 @@ class UIRenderMixin:
     def update_context_ui(self):
         if not self.core.session_id:
             self.context_progress.setValue(0)
-            self.context_progress.setFormat("Context: 0 / 50000 tokens")
+            self.context_progress.setFormat("Session: 0 / 128,000 tokens")
             return
         current_tokens, limit, usage_pct = context_manager.calculate_session_usage(
             self.core.db_path, self.core.session_id
         )
         self.context_progress.setMaximum(limit)
         self.context_progress.setValue(current_tokens)
-        self.context_progress.setFormat(f"Context: {current_tokens} / {limit} tokens")
+        self.context_progress.setFormat(
+            f"Session: {current_tokens:,} / {limit:,} tokens"
+        )
         self.context_progress.setProperty("warning", usage_pct >= 75.0)
         self.context_progress.setProperty("danger", usage_pct >= 90.0)
         self.context_progress.style().unpolish(self.context_progress)
         self.context_progress.style().polish(self.context_progress)
+
+    def update_usage_ui(self):
+        """Updates the global cost label with cumulative token spend."""
+        usage = database.get_global_usage(self.core.db_path)
+        total_tokens = usage["total_tokens"]
+        total_cost = usage["total_cost"]
+
+        # Format tokens for readability
+        if total_tokens >= 1_000_000:
+            token_str = f"{total_tokens / 1_000_000:.1f}M"
+        elif total_tokens >= 1_000:
+            token_str = f"{total_tokens / 1_000:.1f}K"
+        else:
+            token_str = str(total_tokens)
+
+        self.usage_label.setText(f"💰 ${total_cost:.4f} · {token_str} tokens")
 
     def request_render(self):
         self.needs_render = True
@@ -59,6 +78,8 @@ class UIRenderMixin:
                     self.code_blocks_store,
                     self.action_states,
                     show_header=show_header,
+                    prompt_tokens=msg.get("prompt_tokens", 0),
+                    completion_tokens=msg.get("completion_tokens", 0),
                 )
             )
 
@@ -111,3 +132,4 @@ class UIRenderMixin:
             QtCore.QTimer.singleShot(0, lambda: vbar.setValue(vbar.maximum()))
 
         self.update_context_ui()
+        self.update_usage_ui()

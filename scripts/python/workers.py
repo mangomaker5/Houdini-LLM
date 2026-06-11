@@ -118,3 +118,26 @@ class ReflectionWorker(QtCore.QThread):
         except Exception as e:
             print(f"Error in Reflection: {str(e)}")
             self.finished_reflection.emit(self.url_str, False, str(e))
+
+
+class CompactWorker(QtCore.QThread):
+    """Runs session compaction on a background thread to prevent UI freezes.
+
+    The blocking LLM summarization call is moved off Houdini's main event loop.
+    Emits finished_compaction(success: bool, message: str) when done.
+    """
+
+    finished_compaction = QtCore.Signal(bool, str)
+
+    def __init__(self, core, session_id, parent=None):
+        super().__init__(parent)
+        self.core = core
+        self.session_id = session_id
+
+    def run(self):
+        try:
+            success, msg = context_manager.compact_session(self.core, self.session_id)
+            self.finished_compaction.emit(success, msg)
+        except Exception as e:
+            print(f"Error in CompactWorker: {str(e)}")
+            self.finished_compaction.emit(False, f"Compaction error: {str(e)}")

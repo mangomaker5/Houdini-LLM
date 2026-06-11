@@ -150,7 +150,7 @@ GLOBAL_STYLE = """
         background-color: #9245f3;
     }
     
-    /* Context UI styling */
+    /* Session Window UI styling */
     QProgressBar#ContextProgressBar {
         border: 1px solid #444444;
         border-radius: 4px;

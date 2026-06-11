@@ -110,8 +110,35 @@ def init_db(memory_dir):
             session_id TEXT NOT NULL,
             role TEXT NOT NULL,
             content TEXT,
+            prompt_tokens INTEGER DEFAULT 0,
+            completion_tokens INTEGER DEFAULT 0,
             timestamp REAL,
             FOREIGN KEY (session_id) REFERENCES sessions (id) ON DELETE CASCADE
+        )
+    """)
+
+    # Migration: add token columns to existing messages tables
+    for col_sql in [
+        "ALTER TABLE messages ADD COLUMN prompt_tokens INTEGER DEFAULT 0",
+        "ALTER TABLE messages ADD COLUMN completion_tokens INTEGER DEFAULT 0",
+    ]:
+        try:
+            cursor.execute(col_sql)
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
+    # Usage Log Table — global billing tracker across all sessions
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS usage_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT,
+            call_type TEXT NOT NULL,
+            model TEXT,
+            prompt_tokens INTEGER DEFAULT 0,
+            completion_tokens INTEGER DEFAULT 0,
+            total_tokens INTEGER DEFAULT 0,
+            cost REAL DEFAULT 0.0,
+            timestamp REAL
         )
     """)
 
@@ -139,7 +166,7 @@ def init_db(memory_dir):
     return db_path
 
 
-def create_session(db_path, session_id, title="New Chat", token_limit=50000):
+def create_session(db_path, session_id, title="New Chat", token_limit=128000):
     conn = get_connection(db_path)
     now = time.time()
     conn.execute(
@@ -216,15 +243,17 @@ def set_session_token_limit(db_path, session_id, limit):
     conn.commit()
 
 
-def add_message(db_path, session_id, role, content):
+def add_message(
+    db_path, session_id, role, content, prompt_tokens=0, completion_tokens=0
+):
     conn = get_connection(db_path)
     now = time.time()
     conn.execute(
         """
-        INSERT INTO messages (session_id, role, content, timestamp)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO messages (session_id, role, content, prompt_tokens, completion_tokens, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?)
     """,
-        (session_id, role, content, now),
+        (session_id, role, content, prompt_tokens, completion_tokens, now),
     )
     conn.execute("UPDATE sessions SET updated_at = ? WHERE id = ?", (now, session_id))
     conn.commit()
@@ -234,20 +263,102 @@ def get_messages(db_path, session_id):
     """Returns a list of all messages for the session, ordered chronologically."""
     conn = get_connection(db_path)
     cursor = conn.execute(
-        "SELECT id, role, content FROM messages WHERE session_id = ? ORDER BY timestamp ASC, id ASC",
+        "SELECT id, role, content, prompt_tokens, completion_tokens FROM messages WHERE session_id = ? ORDER BY timestamp ASC, id ASC",
         (session_id,),
     )
     return [
-        {"id": row["id"], "role": row["role"], "content": row["content"]}
+        {
+            "id": row["id"],
+            "role": row["role"],
+            "content": row["content"],
+            "prompt_tokens": row["prompt_tokens"] or 0,
+            "completion_tokens": row["completion_tokens"] or 0,
+        }
         for row in cursor.fetchall()
     ]
 
 
+def log_usage(
+    db_path,
+    session_id,
+    call_type,
+    model,
+    prompt_tokens,
+    completion_tokens,
+    total_tokens,
+    cost,
+):
+    """Logs a single API call to the global usage tracker for billing."""
+    conn = get_connection(db_path)
+    now = time.time()
+    conn.execute(
+        """
+        INSERT INTO usage_log (session_id, call_type, model, prompt_tokens, completion_tokens, total_tokens, cost, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """,
+        (
+            session_id,
+            call_type,
+            model,
+            prompt_tokens,
+            completion_tokens,
+            total_tokens,
+            cost,
+            now,
+        ),
+    )
+    conn.commit()
+
+
+def get_global_usage(db_path):
+    """Returns cumulative token usage and cost across ALL sessions."""
+    conn = get_connection(db_path)
+    row = conn.execute(
+        """
+        SELECT
+            COALESCE(SUM(prompt_tokens), 0) as total_prompt,
+            COALESCE(SUM(completion_tokens), 0) as total_completion,
+            COALESCE(SUM(total_tokens), 0) as total_tokens,
+            COALESCE(SUM(cost), 0.0) as total_cost,
+            COUNT(*) as total_calls
+        FROM usage_log
+    """
+    ).fetchone()
+    return (
+        dict(row)
+        if row
+        else {
+            "total_prompt": 0,
+            "total_completion": 0,
+            "total_tokens": 0,
+            "total_cost": 0.0,
+            "total_calls": 0,
+        }
+    )
+
+
 def delete_oldest_messages(db_path, session_id, keep_last_n):
-    """Deletes all messages except the last N messages for a session."""
+    """Deletes old messages while preserving the last N and the first user message.
+
+    The first user message is the session's 'anchor' — it captures the original
+    intent/goal and must never be deleted during compaction.
+    """
     conn = get_connection(db_path)
 
-    # Find the IDs of the messages we want to KEEP
+    # 1. Find the very first user message (the session anchor)
+    anchor_row = conn.execute(
+        """
+        SELECT id FROM messages
+        WHERE session_id = ? AND role = 'user'
+        ORDER BY timestamp ASC, id ASC
+        LIMIT 1
+    """,
+        (session_id,),
+    ).fetchone()
+
+    anchor_id = anchor_row["id"] if anchor_row else None
+
+    # 2. Find the IDs of the most recent N messages to KEEP
     cursor = conn.execute(
         """
         SELECT id FROM messages
@@ -259,6 +370,11 @@ def delete_oldest_messages(db_path, session_id, keep_last_n):
     )
 
     keep_ids = [row["id"] for row in cursor.fetchall()]
+
+    # 3. Always protect the anchor
+    if anchor_id is not None and anchor_id not in keep_ids:
+        keep_ids.append(anchor_id)
+
     if not keep_ids:
         return
 
