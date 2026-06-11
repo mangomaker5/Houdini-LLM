@@ -107,6 +107,20 @@ GLOBAL_STYLE = """
         font-size: 14px;
         padding: 5px 10px;
     }
+    QComboBox QLineEdit {
+        background-color: transparent;
+        color: #dfdfdf;
+        border: none;
+        selection-background-color: #3498db;
+    }
+    QComboBox QAbstractItemView, QListView#ModelCompleterPopup {
+        background-color: #2b2b2b;
+        border: 1px solid #444444;
+        color: #dfdfdf;
+        selection-background-color: #3498db;
+        selection-color: white;
+        outline: none;
+    }
     QComboBox::drop-down {
         subcontrol-origin: padding;
         subcontrol-position: top right;
