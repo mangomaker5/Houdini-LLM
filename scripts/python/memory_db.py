@@ -154,6 +154,22 @@ def get_all_learned_skills(db_path):
     return [dict(row) for row in cursor.fetchall()]
 
 
+def is_code_in_skills(db_path, code):
+    """Check if the exact code block exists in learned_skills_meta.
+
+    Returns True if found, False otherwise. Used by the chat formatter
+    to reflect the save button state from the actual DB.
+    """
+    try:
+        conn = get_connection(db_path)
+        row = conn.execute(
+            "SELECT 1 FROM learned_skills_meta WHERE code = ? LIMIT 1", (code,)
+        ).fetchone()
+        return row is not None
+    except Exception:
+        return False
+
+
 def _sanitize_fts_query(raw_text):
     """Strips all FTS5 reserved characters and builds a safe OR-prefixed query.
 

@@ -80,6 +80,7 @@ class UIRenderMixin:
                     show_header=show_header,
                     prompt_tokens=msg.get("prompt_tokens", 0),
                     completion_tokens=msg.get("completion_tokens", 0),
+                    db_path=self.core.db_path,
                 )
             )
 

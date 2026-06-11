@@ -11,7 +11,7 @@ except ImportError:
 
 
 def format_markdown_to_html(
-    text, code_blocks_store=None, action_states=None, show_actions=True
+    text, code_blocks_store=None, action_states=None, show_actions=True, db_path=None
 ):
     if code_blocks_store is None:
         code_blocks_store = {}
@@ -51,6 +51,19 @@ def format_markdown_to_html(
 
         block_id = f"block_{len(code_blocks_store)}"
         code_blocks_store[block_id] = code
+
+        # Determine save button state: check DB for existing skill with this code
+        save_key = f"save_code:{block_id}"
+        if save_key not in action_states or action_states[save_key] in (
+            "&nbsp;🌟 Save to Memory&nbsp;",
+            "&nbsp;✅ Saved!&nbsp;",
+        ):
+            from memory_db import is_code_in_skills
+
+            if db_path and is_code_in_skills(db_path, code):
+                action_states[save_key] = "&nbsp;✅ Saved!&nbsp;"
+            elif save_key not in action_states:
+                action_states[save_key] = "&nbsp;🌟 Save to Memory&nbsp;"
 
         run_text = action_states.get(f"run_code:{block_id}", "&nbsp;▶ Run Code&nbsp;")
         copy_text = action_states.get(
@@ -170,6 +183,7 @@ def build_bubble(
     show_header=True,
     prompt_tokens=0,
     completion_tokens=0,
+    db_path=None,
 ):
     if code_blocks_store is None:
         code_blocks_store = {}
@@ -209,7 +223,7 @@ def build_bubble(
 
     is_agent = role in ("Agent", "Agent (MCP)")
     html_content = format_markdown_to_html(
-        text, code_blocks_store, action_states, show_actions=is_agent
+        text, code_blocks_store, action_states, show_actions=is_agent, db_path=db_path
     )
 
     if role == "User":
@@ -289,10 +303,15 @@ def build_bubble(
             <tr>
                 <td align="left">
                     <div style="font-weight: bold; color: {color}; margin-bottom: 8px; font-size: 15px;">◆ System</div>
-                    <div style="color: {color}; line-height: 1.6; font-size: 14px;">
-                        <i>{html_content}</i>
-                    </div>
+                    <table border="0" cellpadding="14" cellspacing="0" bgcolor="#2b2b2b" style="border-radius: 18px;">
+                        <tr>
+                            <td align="left" style="color: {color}; font-size: 14px; line-height: 1.6; font-style: italic;">
+                                {html_content}
+                            </td>
+                        </tr>
+                    </table>
                 </td>
+                <td width="10%"></td>
             </tr>
         </table>
         """

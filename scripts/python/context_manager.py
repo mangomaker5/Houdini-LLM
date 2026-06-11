@@ -84,13 +84,18 @@ def compact_session(core_ref, session_id, keep_last_n=5):
 
     # Filter out meta-messages that should never be summarized
     _SKIP_PREFIXES = (
-        "/compact", "/usage",                       # Slash commands
-        "**📊 Usage Report",                        # /usage output
-        "⏳ Compacting", "Running manual compaction", # Compact status
-        "--- Switched model to",                     # Model switch notices
+        "/compact",
+        "/usage",  # Slash commands
+        "**📊 Usage Report",  # /usage output
+        "⏳ Compacting",
+        "Running manual compaction",  # Compact status
+        "--- Switched model to",  # Model switch notices
+        "◆ System Context compacted successfully",  # New format compact result
+        "Context compacted successfully.",  # Old format compact result
+        "No new meaningful messages to compact.",  # Already-compacted guard
+        "Not enough messages to compact.",  # Too-few guard
     )
 
-    # Prepare the prompt for the LLM
     text_to_summarize = []
     for msg in messages_to_summarize:
         role = msg.get("role", "unknown")
@@ -98,6 +103,9 @@ def compact_session(core_ref, session_id, keep_last_n=5):
         if any(content.startswith(prefix) for prefix in _SKIP_PREFIXES):
             continue
         text_to_summarize.append(f"[{role.upper()}]: {content}")
+
+    if not text_to_summarize:
+        return False, "No new meaningful messages to compact."
 
     joined_text = "\n\n".join(text_to_summarize)
 
@@ -137,7 +145,11 @@ def compact_session(core_ref, session_id, keep_last_n=5):
         database.update_session_summary(db_path, session_id, new_summary)
         database.delete_oldest_messages(db_path, session_id, keep_last_n)
 
-        return True, "Context compacted successfully."
+        tokens_used = estimate_tokens(user_prompt) + estimate_tokens(new_summary)
+        return (
+            True,
+            f"◆ System Context compacted successfully. (Approx. {tokens_used} tokens used for summary)",
+        )
 
     except Exception as e:
         return False, f"Summarization error: {str(e)}"

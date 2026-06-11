@@ -47,12 +47,16 @@ class UISessionMixin:
         self.refresh_session_list()
 
     def on_new_chat(self):
+        if hasattr(self, "worker") and self.worker.isRunning():
+            return
         self.core.start_new_session()
         self.refresh_session_list()
         self.request_render()
         self.text_input.setFocus()
 
     def on_session_clicked(self, session_id):
+        if hasattr(self, "worker") and self.worker.isRunning():
+            return
         if session_id != self.core.session_id:
             if self.core.load_session(session_id):
                 self.refresh_session_list()

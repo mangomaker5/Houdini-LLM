@@ -8,7 +8,12 @@ class UIActionsMixin:
         text = self.text_input.toPlainText().strip()
         # Only show popup when user is typing a bare slash command (no space yet).
         # e.g. "/" or "/arn" → show popup.  "/arnold create light" → hide.
-        show = text.startswith("/") and " " not in text and text != "/compact" and text != "/usage"
+        show = (
+            text.startswith("/")
+            and " " not in text
+            and text != "/compact"
+            and text != "/usage"
+        )
         self.cmd_popup.setVisible(show)
 
     def on_cmd_popup_selected(self, item):
@@ -89,6 +94,10 @@ class UIActionsMixin:
 
         elif action == "save_code":
             from workers import ReflectionWorker
+
+            current_state = self.action_states.get(link, "")
+            if "Saving..." in current_state or "Saved!" in current_state:
+                return
 
             self.action_states[link] = "&nbsp;⏳ Saving...&nbsp;"
             self.request_render()
@@ -197,3 +206,9 @@ class UIActionsMixin:
         close_btn.clicked.connect(dialog.accept)
 
         dialog.exec()
+
+        # After dialog closes, clear save button states so they re-check DB
+        stale_keys = [k for k in self.action_states if k.startswith("save_code:")]
+        for k in stale_keys:
+            del self.action_states[k]
+        self.request_render()

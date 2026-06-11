@@ -316,7 +316,7 @@ class AIAgentCore:
                     headers=headers,
                     method="POST",
                 )
-                with urllib.request.urlopen(req, timeout=20) as response:
+                with urllib.request.urlopen(req, timeout=120) as response:
                     while True:
                         if check_cancelled and check_cancelled():
                             break

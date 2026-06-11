@@ -118,6 +118,9 @@ class AIAgentUI(
             self.new_chat_btn.setEnabled(True)
             self.session_scroll.setEnabled(True)
             self.text_input.setEnabled(True)
+            self.model_combo.setEnabled(True)
+            self.settings_btn.setEnabled(True)
+            self.manage_memory_btn.setEnabled(True)
             self.text_input.setFocus()
 
             # Save the stopped message directly to DB to ensure it renders!
@@ -177,9 +180,14 @@ class AIAgentUI(
             self.thinking_dots = 0
             self.thinking_timer.start(400)
 
-            # Disable send while compaction runs in the background
+            # Full UI lockdown during compaction
             self.send_btn.setEnabled(False)
             self.text_input.setEnabled(False)
+            self.new_chat_btn.setEnabled(False)
+            self.session_scroll.setEnabled(False)
+            self.model_combo.setEnabled(False)
+            self.settings_btn.setEnabled(False)
+            self.manage_memory_btn.setEnabled(False)
 
             from workers import CompactWorker
 
@@ -195,6 +203,9 @@ class AIAgentUI(
         self.new_chat_btn.setEnabled(False)
         self.session_scroll.setEnabled(False)
         self.text_input.setEnabled(False)
+        self.model_combo.setEnabled(False)
+        self.settings_btn.setEnabled(False)
+        self.manage_memory_btn.setEnabled(False)
 
         # Save user message immediately to the DB to prevent disappearance or double rendering
         if not self.core.session_id:
@@ -259,6 +270,9 @@ class AIAgentUI(
         self.new_chat_btn.setEnabled(True)
         self.session_scroll.setEnabled(True)
         self.text_input.setEnabled(True)
+        self.model_combo.setEnabled(True)
+        self.settings_btn.setEnabled(True)
+        self.manage_memory_btn.setEnabled(True)
         self.text_input.setFocus()
         self.refresh_session_list()
         self._perform_render()
@@ -270,6 +284,11 @@ class AIAgentUI(
         self.core.append_to_history("system", message)
         self.send_btn.setEnabled(True)
         self.text_input.setEnabled(True)
+        self.new_chat_btn.setEnabled(True)
+        self.session_scroll.setEnabled(True)
+        self.model_combo.setEnabled(True)
+        self.settings_btn.setEnabled(True)
+        self.manage_memory_btn.setEnabled(True)
         self.text_input.setFocus()
         self.refresh_session_list()
         self.request_render()
