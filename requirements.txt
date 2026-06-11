@@ -2,3 +2,5 @@ sqlite-vec==0.1.9
 pygments==2.17.2
 markdown==3.5.2
 langchain-text-splitters==1.1.2
+beautifulsoup4==4.12.3
+markdownify==0.11.6

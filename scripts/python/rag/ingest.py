@@ -221,14 +221,12 @@ def main():
         "solaris": "solaris.zip",
         "shade": "shade.zip",
         "render": "render.zip",
-        "commands": "commands.zip",
-        "pyro": "pyro.zip",
-        "vellum": "vellum.zip",
-        "fluid": "fluid.zip",
-        "destruction": "destruction.zip",
-        "crowds": "crowds.zip",
-        "tops": "tops.zip",
-        "character": "character.zip",
+        "basics": "basics.zip",
+        "network": "network.zip",
+        "model": "model.zip",
+        "copy": "copy.zip",
+        "assets": "assets.zip",
+        "arnold": r"D:\dev\applications\Houdini-LLM\data\arnold.zip",
     }
 
     from rag.vector_db import delete_houdini_docs_by_prefix
@@ -308,7 +306,11 @@ def main():
                 except Exception:
                     pass
                 for prefix in zip_keys:
-                    zip_path = os.path.join(base_help_dir, critical_zips[prefix])
+                    zip_path = (
+                        critical_zips[prefix]
+                        if os.path.isabs(critical_zips[prefix])
+                        else os.path.join(base_help_dir, critical_zips[prefix])
+                    )
                     if os.path.exists(zip_path):
                         ingest_zip(core, zip_path, prefix, max_files=None)
                 print("\nForce rebuild completed.")
@@ -328,7 +330,11 @@ def main():
                     if ans == "y":
                         print(f"Deleting existing vectors for {prefix}...")
                         delete_houdini_docs_by_prefix(core.db_path, prefix)
-                        zip_path = os.path.join(base_help_dir, critical_zips[prefix])
+                        zip_path = (
+                            critical_zips[prefix]
+                            if os.path.isabs(critical_zips[prefix])
+                            else os.path.join(base_help_dir, critical_zips[prefix])
+                        )
                         if os.path.exists(zip_path):
                             ingest_zip(core, zip_path, prefix, max_files=None)
                 elif status_map[prefix] == "⚠️ Partial":
@@ -342,11 +348,19 @@ def main():
                     if ans == "y":
                         print(f"Cleaning up partial ingestion for {prefix}...")
                         delete_houdini_docs_by_prefix(core.db_path, prefix)
-                        zip_path = os.path.join(base_help_dir, critical_zips[prefix])
+                        zip_path = (
+                            critical_zips[prefix]
+                            if os.path.isabs(critical_zips[prefix])
+                            else os.path.join(base_help_dir, critical_zips[prefix])
+                        )
                         if os.path.exists(zip_path):
                             ingest_zip(core, zip_path, prefix, max_files=None)
                 else:
-                    zip_path = os.path.join(base_help_dir, critical_zips[prefix])
+                    zip_path = (
+                        critical_zips[prefix]
+                        if os.path.isabs(critical_zips[prefix])
+                        else os.path.join(base_help_dir, critical_zips[prefix])
+                    )
                     if os.path.exists(zip_path):
                         ingest_zip(core, zip_path, prefix, max_files=None)
                     else:
