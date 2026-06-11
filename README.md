@@ -63,16 +63,8 @@ Download or clone this repository and extract it anywhere on your computer.
 
 ### Step 2: Install Python Dependencies
 The plugin requires `sqlite-vec` (for vector memory) and `pygments` (for syntax highlighting).
-1. Open the **Houdini Command Line Tools** from your Windows Start Menu (this ensures the internal `hython` command is used, not your system Python).
-2. Navigate to where you extracted the project:
-   ```cmd
-   cd D:\dev\applications\Houdini-LLM
-   ```
-3. Run the automated installer script:
-   ```cmd
-   install_dependencies.bat
-   ```
-*This safely downloads the required libraries into a local `python_libs` folder inside your repository without touching Houdini's core files.*
+1. Simply double-click the **`install_dependencies.bat`** file in the root folder.
+*(The script auto-detects your Houdini installation and uses `hython` to safely download the required libraries into a local `python_libs` folder without touching Houdini's core files).*
 
 ### Step 3: Build the RAG Knowledge Base
 To give the AI Agent its deep knowledge of Houdini's Python API, you need to build the initial vector database.
@@ -114,6 +106,58 @@ Houdini uses `.json` package files to load custom plugins.
    - Our default configured chat model is **`deepseek/deepseek-v4-pro`**, which is optimized for agentic coding.
    - The plugin also utilizes a separate embedded model from OpenAI (`openai/text-embedding-3-small`) via OpenRouter to generate the vector memory for self-learning and RAG. Ensure your account has sufficient credits.
 5. You're ready to go! Start chatting with the agent.
+
+---
+
+## 💻 Developer Setup (VSCode / IDE)
+
+If you are a developer looking to contribute or modify the codebase, **do not** point your IDE's Python interpreter to Houdini's internal `hython.exe`. To keep the Houdini installation safe and pristine, follow this isolated virtual environment setup:
+
+As a developer, you must have **both** the runtime libraries (`python_libs`) and a development virtual environment (`.venv`).
+
+### 1. Build the Runtime Libraries
+Just like an end-user, you must run the installer to make the dependencies available to Houdini at runtime.
+1. Double-click the **`install_dependencies.bat`** file to generate the `python_libs` folder.
+
+### 2. Enter the Development Environment
+Next, create your isolated `.venv` to power your IDE's intellisense and linters.
+
+```powershell
+cd D:\dev\applications\Houdini-LLM
+
+# Create the virtual environment (Only run this once EVER on a new machine)
+python -m venv .venv 
+
+# Activate it (Your prompt will show `(.venv)`)
+.\.venv\Scripts\Activate.ps1
+
+# Install the runtime dependencies so your IDE can resolve imports
+pip install -r requirements.txt
+
+# Install the required linters for this project
+pip install ruff mypy
+```
+
+### 3. Formatting & Linting
+We use `ruff` for formatting/linting and `mypy` for strict type checking.
+```powershell
+cd D:\dev\applications\Houdini-LLM\scripts\python
+
+# Auto-formats all code instantly
+ruff format .            
+
+# Finds and fixes linting errors instantly
+ruff check . --fix       
+
+# Checks for strict Type errors (ignores missing 'hou' library and stops folder confusion)
+mypy . --ignore-missing-imports --explicit-package-bases
+```
+
+### 4. Exit the Environment
+When you are completely finished working and want to leave the virtual environment:
+```powershell
+deactivate
+```
 
 ---
 
