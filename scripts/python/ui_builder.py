@@ -16,6 +16,7 @@ class UIBuilderMixin:
         sidebar_layout.setSpacing(0)
         self.new_chat_btn = QtWidgets.QPushButton("＋ New Session")
         self.new_chat_btn.setObjectName("NewChatButton")
+        self.new_chat_btn.setToolTip("Start a new conversation session")
         self.new_chat_btn.setCursor(QtCore.Qt.PointingHandCursor)
         self.new_chat_btn.clicked.connect(self.on_new_chat)
         self.session_scroll = QtWidgets.QScrollArea()
@@ -32,6 +33,9 @@ class UIBuilderMixin:
         self.session_scroll.setWidget(self.session_container)
         self.manage_memory_btn = QtWidgets.QPushButton("🧠 Manage Memory")
         self.manage_memory_btn.setObjectName("ManageMemoryButton")
+        self.manage_memory_btn.setToolTip(
+            "View and manage learned skills and code snippets"
+        )
         self.manage_memory_btn.setCursor(QtCore.Qt.PointingHandCursor)
 
         sidebar_layout.addWidget(self.new_chat_btn)
@@ -48,6 +52,7 @@ class UIBuilderMixin:
         self.model_combo.setInsertPolicy(QtWidgets.QComboBox.NoInsert)
         self.model_combo.lineEdit().setPlaceholderText("Search models...")
         self.model_combo.lineEdit().setAlignment(QtCore.Qt.AlignLeft)
+        self.model_combo.setToolTip("Select the LLM model to use")
         self.model_combo.setMinimumWidth(250)
         self.model_combo.currentIndexChanged.connect(self.on_model_changed)
         completer = QtWidgets.QCompleter()
@@ -56,6 +61,7 @@ class UIBuilderMixin:
         self.model_combo.setCompleter(completer)
         self.settings_btn = QtWidgets.QPushButton("⚙ Settings")
         self.settings_btn.setObjectName("SettingsButton")
+        self.settings_btn.setToolTip("Open application settings (API Keys, etc.)")
         self.settings_btn.setCursor(QtCore.Qt.PointingHandCursor)
         self.settings_btn.clicked.connect(self.open_settings)
         top_bar.addWidget(self.model_combo)
@@ -117,6 +123,7 @@ class UIBuilderMixin:
         self.text_input.textChanged.connect(self.on_text_changed)
         self.send_btn = QtWidgets.QPushButton("↑")
         self.send_btn.setObjectName("SendButton")
+        self.send_btn.setToolTip("Send message to the agent")
         self.send_btn.setFixedSize(30, 30)
         self.send_btn.setCursor(QtCore.Qt.PointingHandCursor)
         self.send_btn.clicked.connect(self.on_send_clicked)
@@ -154,18 +161,21 @@ class UIBuilderMixin:
 
         btn_layout = QtWidgets.QHBoxLayout()
         self.approve_btn = QtWidgets.QPushButton("✅ Approve & Run")
+        self.approve_btn.setToolTip("Execute this code safely in Houdini")
         self.approve_btn.setStyleSheet(
             "QPushButton { background-color: #19c37d; color: white; font-weight: bold; padding: 5px; border-radius: 4px; }"
         )
         self.approve_btn.setCursor(QtCore.Qt.PointingHandCursor)
 
         self.reject_btn = QtWidgets.QPushButton("❌ Reject")
+        self.reject_btn.setToolTip("Reject this code and ask the agent to stop")
         self.reject_btn.setStyleSheet(
             "QPushButton { background-color: #ff4a4a; color: white; font-weight: bold; padding: 5px; border-radius: 4px; }"
         )
         self.reject_btn.setCursor(QtCore.Qt.PointingHandCursor)
 
         self.retry_btn = QtWidgets.QPushButton("🔄 Ask Agent to Fix")
+        self.retry_btn.setToolTip("Send the error back to the agent to fix")
         self.retry_btn.setStyleSheet(
             "QPushButton { background-color: #f1c40f; color: #1e1e1e; font-weight: bold; padding: 5px; border-radius: 4px; }"
         )

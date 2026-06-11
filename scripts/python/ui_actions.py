@@ -149,67 +149,215 @@ class UIActionsMixin:
 
     def on_manage_memory(self):
         from memory_db import get_all_learned_skills, delete_learned_skill
-
         from styles import GLOBAL_STYLE
+        import datetime
 
         dialog = QtWidgets.QDialog(self)
         dialog.setWindowTitle("Manage Memory")
-        dialog.setStyleSheet(GLOBAL_STYLE)
-        dialog.resize(800, 500)
+        dialog.setStyleSheet(
+            GLOBAL_STYLE
+            + """
+            QTableWidget {
+                background-color: #2b2b2b;
+                alternate-background-color: #333333;
+                border: 1px solid #444444;
+                gridline-color: #444444;
+            }
+            QHeaderView::section {
+                background-color: #3a3a3a;
+                padding: 4px;
+                border: 1px solid #444444;
+                font-weight: bold;
+            }
+        """
+        )
+        dialog.resize(900, 600)
         layout = QtWidgets.QVBoxLayout(dialog)
+
+        # Warning Label
+        warning_label = QtWidgets.QLabel(
+            "⚠️ WARNING: Deleting a skill permanently removes it from the database. It cannot be recovered unless you save it again from an active session."
+        )
+        warning_label.setObjectName("WarningLabel")
+        warning_label.setWordWrap(True)
+        layout.addWidget(warning_label)
+
+        # Top Bar (Search + Stats)
+        top_bar = QtWidgets.QHBoxLayout()
+        search_box = QtWidgets.QLineEdit()
+        search_box.setPlaceholderText("🔍 Search Title or Code...")
+        stats_label = QtWidgets.QLabel()
+
+        top_bar.addWidget(search_box, stretch=1)
+        top_bar.addWidget(stats_label)
+        layout.addLayout(top_bar)
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
 
-        list_widget = QtWidgets.QListWidget()
-        skills = get_all_learned_skills(self.core.db_path)
-
-        # We need a dictionary to quickly look up code by id
-        skills_dict = {}
-        for skill in skills:
-            skills_dict[skill["id"]] = skill.get("code", "")
-            item = QtWidgets.QListWidgetItem(f"[{skill['id']}] {skill['description']}")
-            item.setData(QtCore.Qt.UserRole, skill["id"])
-            list_widget.addItem(item)
+        table = QtWidgets.QTableWidget()
+        table.setColumnCount(4)
+        table.setHorizontalHeaderLabels(["ID", "Description", "Size", "Date Added"])
+        table.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.Stretch)
+        table.horizontalHeader().setSectionResizeMode(
+            0, QtWidgets.QHeaderView.ResizeToContents
+        )
+        table.horizontalHeader().setSectionResizeMode(
+            2, QtWidgets.QHeaderView.ResizeToContents
+        )
+        table.horizontalHeader().setSectionResizeMode(
+            3, QtWidgets.QHeaderView.ResizeToContents
+        )
+        table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        table.setAlternatingRowColors(True)
+        table.setSortingEnabled(True)
 
         code_preview = QtWidgets.QTextBrowser()
         code_preview.setStyleSheet(
             "background-color: #1e1e1e; border: 1px solid #444444; color: #cccccc; font-family: 'Consolas', monospace;"
         )
 
-        def on_item_changed(current, previous):
-            if current:
-                skill_id = current.data(QtCore.Qt.UserRole)
+        class NumericTableWidgetItem(QtWidgets.QTableWidgetItem):
+            def __lt__(self, other):
+                my_val = self.data(QtCore.Qt.UserRole)
+                other_val = other.data(QtCore.Qt.UserRole)
+                if my_val is not None and other_val is not None:
+                    return float(my_val) < float(other_val)
+                return super().__lt__(other)
+
+        skills = get_all_learned_skills(self.core.db_path)
+        skills_dict = {}
+
+        def populate_table():
+            table.setSortingEnabled(False)
+            table.setRowCount(0)
+            total_size = 0
+            visible_count = 0
+
+            search_text = search_box.text().lower()
+
+            for skill in skills:
+                code_text = skill.get("code", "")
+                desc_text = skill.get("description", "")
+
+                # Filtering
+                if search_text:
+                    if (
+                        search_text not in desc_text.lower()
+                        and search_text not in code_text.lower()
+                    ):
+                        continue
+
+                skills_dict[skill["id"]] = code_text
+                row = table.rowCount()
+                table.insertRow(row)
+
+                # ID
+                id_item = QtWidgets.QTableWidgetItem()
+                id_item.setData(QtCore.Qt.DisplayRole, skill["id"])
+
+                # Description
+                desc_item = QtWidgets.QTableWidgetItem(desc_text)
+
+                # Size
+                size_bytes = len(code_text.encode("utf-8"))
+                total_size += size_bytes
+                size_kb = size_bytes / 1024.0
+                size_str = f"{size_kb:.1f} KB" if size_kb >= 1.0 else f"{size_bytes} B"
+                size_item = NumericTableWidgetItem(size_str)
+                size_item.setData(QtCore.Qt.UserRole, size_bytes)
+
+                # Date Added
+                created_at = skill.get("created_at", 0)
+                if created_at:
+                    dt = datetime.datetime.fromtimestamp(created_at)
+                    date_str = dt.strftime("%Y-%m-%d %H:%M")
+                else:
+                    date_str = "Unknown"
+                date_item = QtWidgets.QTableWidgetItem(date_str)
+
+                table.setItem(row, 0, id_item)
+                table.setItem(row, 1, desc_item)
+                table.setItem(row, 2, size_item)
+                table.setItem(row, 3, date_item)
+                visible_count += 1
+
+            total_kb = total_size / 1024.0
+            stats_label.setText(
+                f"<b>Total Skills:</b> {visible_count} &nbsp;|&nbsp; <b>Total Size:</b> {total_kb:.1f} KB"
+            )
+            table.setSortingEnabled(True)
+
+        populate_table()
+        search_box.textChanged.connect(populate_table)
+
+        def on_selection_changed():
+            selected = table.selectedItems()
+            if selected:
+                row = selected[0].row()
+                skill_id = table.item(row, 0).data(QtCore.Qt.DisplayRole)
                 code_preview.setPlainText(skills_dict.get(skill_id, ""))
             else:
                 code_preview.clear()
 
-        list_widget.currentItemChanged.connect(on_item_changed)
+        table.itemSelectionChanged.connect(on_selection_changed)
 
-        splitter.addWidget(list_widget)
+        splitter.addWidget(table)
         splitter.addWidget(code_preview)
-        splitter.setSizes([300, 500])
+        splitter.setSizes([500, 400])
 
         layout.addWidget(splitter)
 
         btn_layout = QtWidgets.QHBoxLayout()
         delete_btn = QtWidgets.QPushButton("Delete Selected")
+        delete_btn.setToolTip("Permanently delete the selected skills")
         delete_btn.setStyleSheet(
-            "background-color: #ef4444; color: white; padding: 8px; border-radius: 4px;"
+            "background-color: #ef4444; color: white; padding: 8px; border-radius: 4px; font-weight: bold;"
         )
+        delete_btn.setCursor(QtCore.Qt.PointingHandCursor)
         close_btn = QtWidgets.QPushButton("Close")
+        close_btn.setToolTip("Close the Manage Memory window")
         close_btn.setStyleSheet(
-            "background-color: #444444; color: white; padding: 8px; border-radius: 4px;"
+            "background-color: #444444; color: white; padding: 8px; border-radius: 4px; font-weight: bold;"
         )
+        close_btn.setCursor(QtCore.Qt.PointingHandCursor)
         btn_layout.addWidget(delete_btn)
         btn_layout.addWidget(close_btn)
         layout.addLayout(btn_layout)
 
         def on_delete():
-            item = list_widget.currentItem()
-            if item:
-                skill_id = item.data(QtCore.Qt.UserRole)
+            selected_ranges = table.selectedRanges()
+            if not selected_ranges:
+                return
+
+            reply = QtWidgets.QMessageBox.warning(
+                dialog,
+                "Confirm Deletion",
+                "Are you sure you want to permanently delete the selected skill(s)?",
+                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                QtWidgets.QMessageBox.No,
+            )
+            if reply != QtWidgets.QMessageBox.Yes:
+                return
+
+            rows_to_delete = []
+            for r in selected_ranges:
+                for row in range(r.topRow(), r.bottomRow() + 1):
+                    rows_to_delete.append(row)
+
+            rows_to_delete.sort(reverse=True)
+
+            for row in rows_to_delete:
+                skill_id = table.item(row, 0).data(QtCore.Qt.DisplayRole)
                 delete_learned_skill(self.core.db_path, skill_id)
-                list_widget.takeItem(list_widget.row(item))
+                # Remove from local list so it stays removed during filtering
+                for i, s in enumerate(skills):
+                    if s["id"] == skill_id:
+                        skills.pop(i)
+                        break
+                table.removeRow(row)
+
+            populate_table()
 
         delete_btn.clicked.connect(on_delete)
         close_btn.clicked.connect(dialog.accept)

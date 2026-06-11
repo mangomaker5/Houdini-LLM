@@ -55,6 +55,7 @@ class SettingsDialog(QtWidgets.QDialog):
 
         self.toggle_btn = QtWidgets.QPushButton("👁")
         self.toggle_btn.setObjectName("ToggleBtn")
+        self.toggle_btn.setToolTip("Show/Hide API Key")
         self.toggle_btn.setCursor(QtCore.Qt.PointingHandCursor)
         self.toggle_btn.clicked.connect(self.toggle_visibility)
 
@@ -68,6 +69,7 @@ class SettingsDialog(QtWidgets.QDialog):
 
         self.delete_btn = QtWidgets.QPushButton("Delete Key")
         self.delete_btn.setObjectName("DeleteBtn")
+        self.delete_btn.setToolTip("Permanently delete the saved API key")
         self.delete_btn.setCursor(QtCore.Qt.PointingHandCursor)
         self.delete_btn.clicked.connect(self.on_delete_clicked)
 
@@ -76,6 +78,7 @@ class SettingsDialog(QtWidgets.QDialog):
 
         self.save_btn = QtWidgets.QPushButton("Save && Close")
         self.save_btn.setObjectName("SaveBtn")
+        self.save_btn.setToolTip("Save settings and close window")
         self.save_btn.setCursor(QtCore.Qt.PointingHandCursor)
         self.save_btn.clicked.connect(self.on_save_clicked)
 

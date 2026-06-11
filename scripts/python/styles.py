@@ -184,16 +184,16 @@ GLOBAL_STYLE = """
         border-radius: 3px;
     }
     QProgressBar#ContextProgressBar[warning="true"]::chunk {
-        background-color: #f59e0b;
+        background-color: #f1c40f;
     }
     QProgressBar#ContextProgressBar[danger="true"]::chunk {
         background-color: #ef4444;
     }
     
     QLabel#WarningLabel {
-        color: #f59e0b;
-        background-color: #3f2a14;
-        border: 1px solid #f59e0b;
+        color: #f1c40f;
+        background-color: #2b2b2b;
+        border: 1px solid #f1c40f;
         border-radius: 4px;
         padding: 6px;
         font-size: 12px;
