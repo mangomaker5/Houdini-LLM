@@ -10,32 +10,8 @@ class SettingsDialog(QtWidgets.QDialog):
 
         from styles import GLOBAL_STYLE
 
-        self.setStyleSheet(
-            GLOBAL_STYLE
-            + """
-            QLabel { font-size: 13px; }
-            QLineEdit {
-                background-color: #40414f; border: 1px solid #565869;
-                border-radius: 4px; padding: 8px; color: white;
-            }
-            QPushButton#SaveBtn {
-                background-color: #19c37d; color: white; border: none;
-                border-radius: 4px; padding: 8px 16px; font-weight: bold;
-            }
-            QPushButton#SaveBtn:hover { background-color: #1a8f5f; }
-            QPushButton#ToggleBtn {
-                background-color: transparent; border: none; color: #8e8ea0; padding: 4px;
-            }
-            QPushButton#ToggleBtn:hover { color: white; }
-            QPushButton#DeleteBtn {
-                background-color: #ef4444; color: white; border: none;
-                border-radius: 4px; padding: 8px 16px; font-weight: bold;
-            }
-            QPushButton#DeleteBtn:hover { background-color: #dc2626; }
-            QLabel a { color: #19c37d; text-decoration: none; }
-            QLabel a:hover { text-decoration: underline; }
-        """
-        )
+        self.setObjectName("SettingsDialog")
+        self.setStyleSheet(GLOBAL_STYLE)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setSpacing(15)

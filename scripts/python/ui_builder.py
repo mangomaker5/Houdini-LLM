@@ -86,8 +86,8 @@ class UIBuilderMixin:
 
         self.usage_label = QtWidgets.QLabel("💰 $0.00 · 0 tokens")
         self.usage_label.setStyleSheet(
-            "color: #888888; font-size: 10px; font-weight: bold; "
-            "background-color: #2b2b2b; border: 1px solid #444444; "
+            "color: #f1c40f; font-size: 10px; font-weight: bold; "
+            "background-color: #2b2b2b; border: 1px solid #f1c40f; "
             "border-radius: 4px; padding: 2px 8px;"
         )
         self.usage_label.setFixedHeight(18)
@@ -147,42 +147,27 @@ class UIBuilderMixin:
         # Review Panel
         self.review_panel = QtWidgets.QFrame()
         self.review_panel.setObjectName("ReviewPanel")
-        self.review_panel.setStyleSheet("""
-            QFrame#ReviewPanel {
-                background-color: #2b2b2b;
-                border: 1px solid #f1c40f;
-                border-radius: 4px;
-            }
-        """)
         review_layout = QtWidgets.QVBoxLayout(self.review_panel)
         self.review_label = QtWidgets.QLabel("Agent proposed code execution:")
-        self.review_label.setStyleSheet("color: #f1c40f; font-weight: bold;")
+        self.review_label.setObjectName("ReviewLabel")
         self.review_code = QtWidgets.QTextBrowser()
+        self.review_code.setObjectName("CodePreview")
         self.review_code.setMinimumHeight(150)
-        self.review_code.setStyleSheet(
-            "background-color: #1e1e1e; color: #cccccc; font-family: 'Consolas', monospace;"
-        )
 
         btn_layout = QtWidgets.QHBoxLayout()
         self.approve_btn = QtWidgets.QPushButton("✅ Approve & Run")
+        self.approve_btn.setObjectName("ApproveBtn")
         self.approve_btn.setToolTip("Execute this code safely in Houdini")
-        self.approve_btn.setStyleSheet(
-            "QPushButton { background-color: #19c37d; color: white; font-weight: bold; padding: 5px; border-radius: 4px; }"
-        )
         self.approve_btn.setCursor(QtCore.Qt.PointingHandCursor)
 
         self.reject_btn = QtWidgets.QPushButton("❌ Reject")
+        self.reject_btn.setObjectName("RejectBtn")
         self.reject_btn.setToolTip("Reject this code and ask the agent to stop")
-        self.reject_btn.setStyleSheet(
-            "QPushButton { background-color: #ff4a4a; color: white; font-weight: bold; padding: 5px; border-radius: 4px; }"
-        )
         self.reject_btn.setCursor(QtCore.Qt.PointingHandCursor)
 
         self.retry_btn = QtWidgets.QPushButton("🔄 Ask Agent to Fix")
+        self.retry_btn.setObjectName("RetryBtn")
         self.retry_btn.setToolTip("Send the error back to the agent to fix")
-        self.retry_btn.setStyleSheet(
-            "QPushButton { background-color: #f1c40f; color: #1e1e1e; font-weight: bold; padding: 5px; border-radius: 4px; }"
-        )
         self.retry_btn.setCursor(QtCore.Qt.PointingHandCursor)
         self.retry_btn.hide()
 

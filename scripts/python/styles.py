@@ -250,9 +250,89 @@ GLOBAL_STYLE = """
         outline: none;
     }
     QListWidget#CommandPopup::item {
-        padding: 4px;
+        padding: 5px;
     }
-    QListWidget#CommandPopup::item:hover {
+    QListWidget#CommandPopup::item:selected {
         background-color: #444444;
+        color: white;
     }
+    
+    /* --- REFACTORED INLINE STYLES --- */
+
+    /* QTableWidget from Manage Memory */
+    QTableWidget {
+        background-color: #2b2b2b;
+        alternate-background-color: #333333;
+        border: 1px solid #444444;
+        gridline-color: #444444;
+    }
+    QHeaderView::section {
+        background-color: #3a3a3a;
+        padding: 4px;
+        border: 1px solid #444444;
+        font-weight: bold;
+    }
+    
+    /* Code Previews */
+    QTextBrowser#CodePreview {
+        background-color: #1e1e1e;
+        border: 1px solid #444444;
+        color: #cccccc;
+        font-family: 'Consolas', monospace;
+    }
+    
+    /* Review Panel */
+    QFrame#ReviewPanel {
+        background-color: #2b2b2b;
+        border: 1px solid #f1c40f;
+        border-radius: 4px;
+    }
+    QLabel#ReviewLabel {
+        color: #f1c40f;
+        font-weight: bold;
+    }
+    
+    /* Global Action Buttons */
+    QPushButton#ApproveBtn {
+        background-color: #19c37d; color: white; font-weight: bold; padding: 5px; border-radius: 4px;
+    }
+    QPushButton#ApproveBtn:hover { background-color: #1a8f5f; }
+    
+    QPushButton#RejectBtn, QPushButton#DangerBtn {
+        background-color: #ef4444; color: white; font-weight: bold; padding: 5px; border-radius: 4px;
+    }
+    QPushButton#RejectBtn:hover, QPushButton#DangerBtn:hover { background-color: #dc2626; }
+    
+    QPushButton#RetryBtn {
+        background-color: #f1c40f; color: #1e1e1e; font-weight: bold; padding: 5px; border-radius: 4px;
+    }
+    QPushButton#RetryBtn:hover { background-color: #d4ac0d; }
+
+    QPushButton#CloseBtn {
+        background-color: #444444; color: white; padding: 8px; border-radius: 4px; font-weight: bold;
+    }
+    QPushButton#CloseBtn:hover { background-color: #555555; }
+    
+    /* Settings Dialog specifics */
+    QDialog#SettingsDialog QLabel { font-size: 13px; }
+    QDialog#SettingsDialog QLineEdit {
+        background-color: #40414f; border: 1px solid #565869;
+        border-radius: 4px; padding: 8px; color: white;
+    }
+    QPushButton#SaveBtn {
+        background-color: #19c37d; color: white; border: none;
+        border-radius: 4px; padding: 8px 16px; font-weight: bold;
+    }
+    QPushButton#SaveBtn:hover { background-color: #1a8f5f; }
+    QPushButton#ToggleBtn {
+        background-color: transparent; border: none; color: #8e8ea0; padding: 4px;
+    }
+    QPushButton#ToggleBtn:hover { color: white; }
+    QPushButton#DeleteBtn {
+        background-color: #ef4444; color: white; border: none;
+        border-radius: 4px; padding: 8px 16px; font-weight: bold;
+    }
+    QPushButton#DeleteBtn:hover { background-color: #dc2626; }
+    QDialog#SettingsDialog QLabel a { color: #19c37d; text-decoration: none; }
+    QDialog#SettingsDialog QLabel a:hover { text-decoration: underline; }
 """

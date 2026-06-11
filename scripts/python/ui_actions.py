@@ -154,23 +154,7 @@ class UIActionsMixin:
 
         dialog = QtWidgets.QDialog(self)
         dialog.setWindowTitle("Manage Memory")
-        dialog.setStyleSheet(
-            GLOBAL_STYLE
-            + """
-            QTableWidget {
-                background-color: #2b2b2b;
-                alternate-background-color: #333333;
-                border: 1px solid #444444;
-                gridline-color: #444444;
-            }
-            QHeaderView::section {
-                background-color: #3a3a3a;
-                padding: 4px;
-                border: 1px solid #444444;
-                font-weight: bold;
-            }
-        """
-        )
+        dialog.setStyleSheet(GLOBAL_STYLE)
         dialog.resize(900, 600)
         layout = QtWidgets.QVBoxLayout(dialog)
 
@@ -209,9 +193,7 @@ class UIActionsMixin:
 
         # --- Right Panel (Code Preview) ---
         code_preview = QtWidgets.QTextBrowser()
-        code_preview.setStyleSheet(
-            "background-color: #1e1e1e; border: 1px solid #444444; color: #cccccc; font-family: 'Consolas', monospace;"
-        )
+        code_preview.setObjectName("CodePreview")
 
         class NumericTableWidgetItem(QtWidgets.QTableWidgetItem):
             def __lt__(self, other):
@@ -316,17 +298,13 @@ class UIActionsMixin:
         btn_layout.addStretch()
 
         delete_btn = QtWidgets.QPushButton("Delete Selected")
+        delete_btn.setObjectName("DangerBtn")
         delete_btn.setToolTip("Permanently delete the selected skills")
-        delete_btn.setStyleSheet(
-            "background-color: #ef4444; color: white; padding: 8px; border-radius: 4px; font-weight: bold;"
-        )
         delete_btn.setCursor(QtCore.Qt.PointingHandCursor)
 
         close_btn = QtWidgets.QPushButton("Close")
+        close_btn.setObjectName("CloseBtn")
         close_btn.setToolTip("Close the Manage Memory window")
-        close_btn.setStyleSheet(
-            "background-color: #444444; color: white; padding: 8px; border-radius: 4px; font-weight: bold;"
-        )
         close_btn.setCursor(QtCore.Qt.PointingHandCursor)
 
         btn_layout.addWidget(delete_btn)

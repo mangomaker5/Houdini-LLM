@@ -308,9 +308,9 @@ class AIAgentUI(
             self.approve_btn.setText("✅ Approve & Run")
 
             self.reject_btn.setText("❌ Reject")
-            self.reject_btn.setStyleSheet(
-                "QPushButton { background-color: #ff4a4a; color: white; font-weight: bold; padding: 5px; border-radius: 4px; }"
-            )
+            self.reject_btn.setObjectName("RejectBtn")
+            self.reject_btn.style().unpolish(self.reject_btn)
+            self.reject_btn.style().polish(self.reject_btn)
             self.reject_btn.show()
 
     def on_approve_code(self):
@@ -387,9 +387,9 @@ class AIAgentUI(
             self.retry_btn.show()
 
             self.reject_btn.setText("Close")
-            self.reject_btn.setStyleSheet(
-                "QPushButton { background-color: #444444; color: white; font-weight: bold; padding: 5px; border-radius: 4px; }"
-            )
+            self.reject_btn.setObjectName("CloseBtn")
+            self.reject_btn.style().unpolish(self.reject_btn)
+            self.reject_btn.style().polish(self.reject_btn)
 
         self.refresh_session_list()
         self.request_render()
