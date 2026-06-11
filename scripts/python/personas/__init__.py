@@ -1,6 +1,22 @@
 import importlib
 
 
+def parse_persona_command(user_text):
+    """
+    Parses the user text for a slash command prefix, returning the
+    mapped persona name.
+    """
+    text_lower = user_text.lower().strip()
+    if text_lower.startswith("/arnold"):
+        return "Arnold Expert"
+    elif text_lower.startswith("/fx"):
+        return "FX Expert"
+    elif text_lower.startswith("/solaris"):
+        return "Solaris/USD Expert"
+
+    return "General TD"
+
+
 def get_persona_prompt(persona_name):
     """
     Dynamically loads the system prompt for a given persona.

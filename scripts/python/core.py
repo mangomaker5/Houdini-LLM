@@ -381,7 +381,7 @@ class AIAgentCore:
                             )
                             kwargs["on_status_update"](msg, color)
 
-                        result = mcp_tools.execute_tool(f_name, f_args)
+                        result = mcp_tools.execute_tool(f_name, f_args, core_ref=self)
 
                         if (
                             f_name == "propose_code_change"

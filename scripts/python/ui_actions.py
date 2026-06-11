@@ -10,6 +10,9 @@ class UIActionsMixin:
 
     def on_cmd_popup_selected(self, item):
         cmd = item.text().split(" ")[0]
+        # Add trailing space so the user can immediately type their prompt
+        if cmd != "/compact":
+            cmd += " "
         self.text_input.setText(cmd)
         cursor = self.text_input.textCursor()
         cursor.movePosition(QtGui.QTextCursor.End)
@@ -191,4 +194,3 @@ class UIActionsMixin:
         close_btn.clicked.connect(dialog.accept)
 
         dialog.exec()
-

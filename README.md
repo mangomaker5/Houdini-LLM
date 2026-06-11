@@ -32,12 +32,13 @@ If you approve a script but it **crashes** during execution inside Houdini, the 
 - The error is converted into an **Anti-Pattern** and permanently saved to the Vector DB.
 - The next time the agent tries a similar task, it sees its past mistake and self-corrects before writing the code.
 
-### 5. Specialized Agents (Personas)
-Select specific "Brains" from the Persona dropdown depending on your task:
-- **General TD:** Excellent for pipeline tasks, node creation, and generic python scripts.
-- **Arnold Expert:** Loaded with specific context for Arnold rendering.
-- **Solaris/USD Expert:** Specialized in LOPs and USD stage manipulation.
-- **FX Expert:** Focused on Vellum, Pyro, and complex simulation setups.
+### 5. Specialized Agents (Slash Commands)
+Invoke domain-specific expert agents directly in your prompt using slash commands. If no slash command is used, the system defaults to the **General TD** persona.
+- **`/arnold`** — Arnold rendering expert. Loaded with specific context for Arnold shading, lighting, and render optimization.
+- **`/solaris`** — Solaris/USD expert. Specialized in LOPs, USD stage manipulation, and composition.
+- **`/fx`** — FX expert. Focused on Vellum, Pyro, FLIP, RBDs, and complex simulation setups.
+
+> **Example:** `/arnold create an Arnold area light in /stage with intensity 5`
 
 ### 6. Context Management
 Use the `/compact` command at any time. Old chat messages are routinely summarized and trimmed to free up token space. However, **your Vector DB Memory (Skills and Anti-Patterns) remains permanent** and unaffected by compaction.

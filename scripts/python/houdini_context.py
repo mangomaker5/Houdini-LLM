@@ -56,6 +56,7 @@ class HoudiniContext:
             "5. NEVER guess parameter names. Even for basic nodes like 'box' or 'sphere', if you are not 100% certain of the internal parameter name, you MUST use the `get_node_parameters` tool to look it up before proposing code.\n"
             "6. ALWAYS verify a parent node exists before creating children. `hou.node('/path')` returns `None` if invalid, and `None.createNode()` will crash.\n"
             "7. To modify a node's interface, you MUST use `ptg = node.parmTemplateGroup()`, append to it, and call `node.setParmTemplateGroup(ptg)`. Do NOT guess non-existent methods like `.addParameter()`.\n"
-            '8. To set expressions like `$F`, you MUST use `parm.setExpression()`. If passing literal `$`, use raw strings `r"$F"`.'
+            '8. To set expressions like `$F`, you MUST use `parm.setExpression()`. If passing literal `$`, use raw strings `r"$F"`.\n'
+            "9. NEVER GUESS THE NETWORK CONTEXT. If the parent network path is ambiguous (e.g., no node is selected and the user did not explicitly mention a path like /obj or /stage), DO NOT GUESS or assume a fallback. You must politely ask the user to clarify the target network."
         )
         return prompt

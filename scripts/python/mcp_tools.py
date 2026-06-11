@@ -196,18 +196,21 @@ def propose_code_change(python_code):
     )
 
 
-def search_memory(query):
+def search_memory(query, core_ref=None):
     try:
-        from core import AIAgentCore
         from memory_db import search_learned_skills, search_anti_patterns
 
-        core = AIAgentCore()
-        embedding = core.generate_embedding(query)
+        if core_ref is None:
+            from core import AIAgentCore
+
+            core_ref = AIAgentCore()
+
+        embedding = core_ref.generate_embedding(query)
         skills = search_learned_skills(
-            core.db_path, embedding, query_text=query, limit=3
+            core_ref.db_path, embedding, query_text=query, limit=3
         )
         anti_patterns = search_anti_patterns(
-            core.db_path, embedding, query_text=query, limit=2
+            core_ref.db_path, embedding, query_text=query, limit=2
         )
 
         if not skills and not anti_patterns:
@@ -225,7 +228,7 @@ def search_memory(query):
         return json.dumps({"status": "error", "message": str(e)})
 
 
-def execute_tool(tool_name, arguments_json):
+def execute_tool(tool_name, arguments_json, core_ref=None):
     """Dispatches the tool call to the appropriate function."""
     try:
         args = json.loads(arguments_json)
@@ -241,8 +244,8 @@ def execute_tool(tool_name, arguments_json):
     elif tool_name == "propose_code_change":
         return propose_code_change(args.get("python_code", ""))
     elif tool_name == "search_memory":
-        return search_memory(args.get("query", ""))
+        return search_memory(args.get("query", ""), core_ref=core_ref)
     elif tool_name == "search_api_docs":
-        return search_api_docs(args.get("query", ""))
+        return search_api_docs(args.get("query", ""), core_ref=core_ref)
     else:
         return json.dumps({"status": "error", "message": f"Unknown tool: {tool_name}"})

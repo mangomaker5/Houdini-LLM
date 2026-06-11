@@ -19,15 +19,18 @@ SEARCH_API_DOCS_SCHEMA = {
 }
 
 
-def search_api_docs(query):
+def search_api_docs(query, core_ref=None):
     try:
-        from core import AIAgentCore
         from rag.vector_db import search_houdini_docs
 
-        core = AIAgentCore()
-        embedding = core.generate_embedding(query)
+        if core_ref is None:
+            from core import AIAgentCore
+
+            core_ref = AIAgentCore()
+
+        embedding = core_ref.generate_embedding(query)
         results = search_houdini_docs(
-            core.db_path, embedding, query_text=query, limit=5
+            core_ref.db_path, embedding, query_text=query, limit=5
         )
         if not results:
             return json.dumps(

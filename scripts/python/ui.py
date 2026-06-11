@@ -40,7 +40,6 @@ class AIAgentUI(
         self.current_model_display = ""
         self.setStyleSheet(GLOBAL_STYLE)
         self.init_ui()
-        self.persona_combo.currentIndexChanged.connect(self.on_persona_changed)
         self.approve_btn.clicked.connect(self.on_approve_code)
         self.reject_btn.clicked.connect(self.on_reject_code)
         self.retry_btn.clicked.connect(self.on_retry_execution)
@@ -75,15 +74,6 @@ class AIAgentUI(
                 "  [ERROR] pygments not found! Syntax highlighting will not work. Please run install_dependencies.bat"
             )
         print("------------------------------------------\n")
-
-    def on_persona_changed(self, index):
-        if self.core.session_id and len(self.core.get_chat_history()) > 0:
-            persona_name = self.persona_combo.currentText()
-            warning_msg = f"Switched persona to: {persona_name}"
-            # Send as a system message to show as warning
-            self.core.append_to_history("system", warning_msg)
-            self.refresh_session_list()
-            self.request_render()
 
     def eventFilter(self, obj, event):
         if obj == self.text_input and event.type() == QtCore.QEvent.KeyPress:
@@ -176,9 +166,15 @@ class AIAgentUI(
         self.core.append_to_history("user", user_text)
         self.refresh_session_list()
 
+        from personas import parse_persona_command
+
+        persona_name = parse_persona_command(user_text)
+
         hou_context = self.context.get_selected_nodes_context()
-        sys_prompt = get_persona_prompt(self.persona_combo.currentText())
-        full_sys_context = sys_prompt + "\n\n" + hou_context
+        sys_prompt = get_persona_prompt(persona_name)
+        global_prompt = self.context.generate_system_prompt()
+
+        full_sys_context = global_prompt + "\n\n" + sys_prompt + "\n\n" + hou_context
 
         agent_mode_active = True
         self.thinking_base_text = "✨ Thinking"
@@ -336,8 +332,6 @@ class AIAgentUI(
             getattr(self, "last_error_message", "Retry please.")
         )
         self.on_send_clicked()
-
-
 
 
 def run_panel():

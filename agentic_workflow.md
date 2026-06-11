@@ -12,7 +12,7 @@ LLMs guess parameter names. Houdini's API changes across versions. A guess like 
 
 ```mermaid
 graph TD
-    A["🧑 User Prompt + Persona"] --> B["🤖 LLM Triggered"]
+    A["🧑 User Prompt + Slash Command"] --> B["🤖 LLM Triggered"]
 
     subgraph INSPECT["Phase 1 · Inspect"]
         B --> C["🧠 search_memory"]
@@ -60,7 +60,8 @@ graph TD
 graph LR
     subgraph BRAIN["🧠 The Brain"]
         B1["core.py · Orchestrator"]
-        B2["personas/ · Domain Prompts"]
+        B2["personas/ · Slash Command Router + Domain Prompts"]
+        B3["houdini_context.py · Global Safety Prompt"]
     end
 
     subgraph EYES["👁️ The Eyes"]
@@ -99,7 +100,7 @@ graph LR
 
 | Layer | Mechanism | Lifetime | Affected by `/compact` |
 |-------|-----------|----------|:---:|
-| **System Prompt** | Persona file + live scene context | Per-request | ❌ |
+| **System Prompt** | Global prompt + persona prompt (via slash cmd) + live scene context | Per-request | ❌ |
 | **Short-Term Context** | Session messages in `messages` table | Until `/compact` or session deleted | ✅ Summarized & trimmed |
 | **Session Summary** | LLM-generated summary in `sessions.summary` | Until session deleted | ✅ Updated |
 | **Long-Term Memory** | Learned Skills + Anti-Patterns in vector DB | Permanent | ❌ Never touched |

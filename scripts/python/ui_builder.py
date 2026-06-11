@@ -98,31 +98,20 @@ class UIBuilderMixin:
         self.context_progress.setFixedHeight(18)
         self.context_progress.setMaximumWidth(280)
 
-        self.persona_combo = QtWidgets.QComboBox()
-        self.persona_combo.setObjectName("PersonaCombo")
-        self.persona_combo.addItems(
-            ["General TD", "Arnold Expert", "Solaris/USD Expert", "FX Expert"]
-        )
-        self.persona_combo.setStyleSheet("""
-            QComboBox {
-                background-color: #2b2b2b;
-                color: #dfdfdf;
-                border: 1px solid #444444;
-                border-radius: 4px;
-                padding: 2px 10px;
-                font-size: 12px;
-            }
-        """)
-
         ctx_bar.addWidget(self.context_progress)
-        ctx_bar.addSpacing(10)
-        ctx_bar.addWidget(self.persona_combo)
         ctx_bar.addStretch()
         # Command Autocomplete Popup
         self.cmd_popup = QtWidgets.QListWidget()
         self.cmd_popup.setObjectName("CommandPopup")
-        self.cmd_popup.addItems(["/compact - Force manual context summarization"])
-        self.cmd_popup.setFixedHeight(35)
+        self.cmd_popup.addItems(
+            [
+                "/compact - Force manual context summarization",
+                "/arnold - Route to Arnold Expert",
+                "/fx - Route to FX Expert",
+                "/solaris - Route to Solaris/USD Expert",
+            ]
+        )
+        self.cmd_popup.setFixedHeight(100)
         self.cmd_popup.hide()
         self.cmd_popup.itemClicked.connect(self.on_cmd_popup_selected)
         # Input Area
@@ -135,7 +124,7 @@ class UIBuilderMixin:
         self.text_input.setObjectName("InputTextEdit")
         self.text_input.setMaximumHeight(100)
         self.text_input.setPlaceholderText(
-            "Message AI TD Agent... (Type '/' for commands)"
+            "Type /arnold, /fx, /solaris for experts, or type normally for General TD..."
         )
         self.text_input.installEventFilter(self)
         self.text_input.textChanged.connect(self.on_text_changed)

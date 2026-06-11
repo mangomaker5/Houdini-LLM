@@ -34,6 +34,8 @@ sequenceDiagram
     participant Embed as OpenRouter Embedding API
 
     User->>UI: Type prompt + press Enter
+    UI->>UI: Parse slash command (e.g., /arnold) → select persona
+    UI->>UI: Build context: Global Prompt + Persona Prompt + Selected Nodes
     UI->>UI: Save user message to DB immediately
     UI->>Worker: Start AgentWorker thread
 
@@ -78,7 +80,14 @@ sequenceDiagram
 ### Key Insight
 The LLM decides which tools to call and in what order. The persona system prompts (e.g., `general_td.py`) contain **strict instructions** telling the LLM it "MUST" call `search_memory` first, then `search_api_docs`, then inspect live nodes, and finally `propose_code_change`. The code in `core.py` does not enforce this order programmatically — it is enforced purely through prompt engineering in the persona.
 
-**Source:** `scripts/python/personas/general_td.py` lines 13-19, `scripts/python/core.py` lines 236-445
+**Persona Routing:** Instead of a UI dropdown, the user invokes a specialized agent via explicit slash commands (`/arnold`, `/fx`, `/solaris`). If no command is used, the system defaults to `General TD`. The `parse_persona_command()` function in `personas/__init__.py` handles this routing.
+
+**System Prompt Composition:** Each request builds a 3-layer system prompt:
+1. **Global Prompt** (`houdini_context.generate_system_prompt()`) — 9 strict Houdini Python safety rules including "Never Guess Network Context"
+2. **Persona Prompt** (e.g., `arnold_expert.SYSTEM_PROMPT`) — Domain-specific instructions + tool execution pipeline
+3. **Live Scene Context** (`houdini_context.get_selected_nodes_context()`) — Currently selected nodes and their parameters
+
+**Source:** `scripts/python/personas/__init__.py`, `scripts/python/ui.py` lines 169-176, `scripts/python/core.py` lines 236-445
 
 ---
 
@@ -226,7 +235,7 @@ Houdini-LLM maintains multiple layers of context, each with different lifetimes 
 
 | Layer | Storage | Lifetime | Affected by `/compact` |
 |-------|---------|----------|:---:|
-| **System Prompt** | In-memory (persona file + `houdini_context.py` selected nodes) | Rebuilt fresh per request | ❌ |
+| **System Prompt** | In-memory (global prompt + persona prompt + `houdini_context.py` selected nodes) | Rebuilt fresh per request | ❌ |
 | **Chat Messages** | `messages` table in SQLite | Until `/compact` trims or session deleted | ✅ Old messages summarized & deleted |
 | **Session Summary** | `sessions.summary` column | Until session deleted | ✅ Updated with new summary |
 | **Long-Term Memory** | `learned_skills` + `anti_patterns` (vector tables) | **Permanent** | ❌ Never touched |
@@ -254,7 +263,7 @@ When the user types `/compact` (or auto-compact triggers at >80% token usage):
 
 Let's trace your exact scenario step by step:
 
-### Prompt 1: "Create an Arnold light"
+### Prompt 1: "/arnold Create an Arnold light in /obj"
 1. **search_memory** → generates 1 embedding, searches DB → no skills found (empty DB).
 2. **search_api_docs** → generates 1 embedding, finds Arnold docs from RAG.
 3. **get_node_parameters("arnold_light")** → inspects live Houdini scene, returns exact parameter names. No embedding.
@@ -266,7 +275,7 @@ Let's trace your exact scenario step by step:
    - `check_skill_duplicate` → no match (DB was empty) → **INSERT** new skill.
    - **Embedding calls this prompt: 2 (search) + 1 (reflection) = 3 total**
 
-### Prompt 2: "Create another Arnold light with intensity 10 and color red"
+### Prompt 2: "/arnold Create another Arnold light in /obj with intensity 10 and color red"
 1. **search_memory** → generates 1 embedding, searches DB → **finds** the skill from Prompt 1 (the previously saved "Create an Arnold area light" code + description).
 2. **search_api_docs** → generates 1 embedding, finds Arnold docs.
 3. **get_node_parameters("arnold_light")** → gets exact parameter names again.
@@ -320,7 +329,8 @@ The agent **always generates fresh code** on each prompt. Past skills serve as *
 | `ui_session.py` | Session list management |
 | `database.py` | SQLite connection pool + session/message tables + DB initialization |
 | `context_manager.py` | Token estimation + `/compact` session summarization |
-| `houdini_context.py` | Live Houdini scene introspection (selected nodes context) |
+| `houdini_context.py` | Global system prompt (9 safety rules) + live Houdini scene introspection (selected nodes context) |
+| `personas/__init__.py` | Slash command parser (`parse_persona_command`) + dynamic persona loader (`get_persona_prompt`) |
 | `personas/*.py` | Per-domain system prompts (General TD, Arnold, Solaris, FX) |
 | `chat_formatter.py` | Markdown → HTML rendering for the chat display |
 | `styles.py` | Global CSS/QSS stylesheet for the UI |
