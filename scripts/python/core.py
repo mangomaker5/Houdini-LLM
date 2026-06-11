@@ -298,6 +298,7 @@ class AIAgentCore:
 
         complete_response = ""
         syntax_retries = 0
+        pipeline_retries = 0
         total_prompt_tokens = 0
         total_completion_tokens = 0
 
@@ -407,11 +408,47 @@ class AIAgentCore:
                     }
                     request_history.append(assistant_msg)
 
+                    has_inspected = any(
+                        msg.get("role") == "tool"
+                        and msg.get("name") in ["search_memory", "search_api_docs"]
+                        for msg in request_history
+                    )
+
                     for tc in tool_calls_buffer.values():
                         if check_cancelled and check_cancelled():
                             break
                         f_name = tc["function"]["name"]
                         f_args = tc["function"]["arguments"]
+
+                        if f_name == "propose_code_change" and not has_inspected:
+                            pipeline_retries += 1
+                            if pipeline_retries >= 2:
+                                msg = "\n\n❌ **Agent repeatedly failed to follow the strict inspection pipeline. Halting to save tokens. Please clarify your prompt.**"
+                                complete_response += msg
+                                yield msg
+                                return
+
+                            print(
+                                "[Houdini-LLM Warning] Blocked 'propose_code_change' because agent skipped inspection tools."
+                            )
+
+                            result = json.dumps(
+                                {
+                                    "status": "error",
+                                    "message": "SYSTEM REJECTION: Strict Pipeline Violation. You attempted to propose code before inspecting. You MUST call search_memory and/or search_api_docs first to gather context. Do not guess.",
+                                    "instruction": "Execute the required search tools first, read their output, and then propose the code.",
+                                }
+                            )
+
+                            request_history.append(
+                                {
+                                    "role": "tool",
+                                    "tool_call_id": tc["id"],
+                                    "name": f_name,
+                                    "content": result,
+                                }
+                            )
+                            continue
 
                         tool_msg = f"\n___TOOL_EXEC_{f_name}___\n"
                         complete_response += tool_msg
