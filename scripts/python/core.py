@@ -159,6 +159,10 @@ class AIAgentCore:
         # 3. Add recent messages from DB (this now includes the user message we just saved)
         messages = database.get_messages(self.db_path, self.session_id)
         for msg in messages:
+            # UI status messages are stored as 'system' in the DB. They must not be sent to the API.
+            if msg["role"] == "system":
+                continue
+
             role_for_api = (
                 "assistant" if msg["role"] == "assistant_mcp" else msg["role"]
             )
@@ -501,16 +505,43 @@ class AIAgentCore:
 
             except urllib.error.HTTPError as e:
                 error_msg = e.read().decode("utf-8")
-                msg = f"\nAPI Error ({e.code}): {error_msg}"
-                print(f"Network Error: {msg}")
-                role_to_save = "assistant_mcp" if agent_mode else "assistant"
-                self.append_to_history(role_to_save, msg)
-                yield msg
+
+                # 1. Print detailed logs to Houdini Console
+                print(f"[Houdini-LLM Error] API HTTP {e.code}: {error_msg}")
+
+                # 2. Yield proper error bubble to UI (never saved to DB)
+                from styles import THEME
+
+                error_bubble = f"\n\n<div style='color: {THEME['text_main']}; background-color: #3b1e1e; padding: 12px; border-radius: 8px; border: 1px solid {THEME['error']}; margin-top: 10px;'><b>🚨 API Error ({e.code})</b><br><br><span style='font-family: monospace; font-size: 11px; color: {THEME['error']};'>{error_msg}</span></div>"
+                yield error_bubble
+
+                # 3. Only save the partial good response to DB
+                if complete_response:
+                    role_to_save = "assistant_mcp" if agent_mode else "assistant"
+                    self.append_to_history(
+                        role_to_save,
+                        complete_response,
+                        prompt_tokens=total_prompt_tokens,
+                        completion_tokens=total_completion_tokens,
+                    )
                 break
             except Exception as e:
-                msg = f"\nConnection Error: {str(e)}"
-                print(f"Network Error: {msg}")
-                role_to_save = "assistant_mcp" if agent_mode else "assistant"
-                self.append_to_history(role_to_save, msg)
-                yield msg
+                # 1. Print detailed logs to Houdini Console
+                print(f"[Houdini-LLM Error] Connection Error: {str(e)}")
+
+                # 2. Yield proper error bubble to UI (never saved to DB)
+                from styles import THEME
+
+                error_bubble = f"\n\n<div style='color: {THEME['text_main']}; background-color: #3b1e1e; padding: 12px; border-radius: 8px; border: 1px solid {THEME['error']}; margin-top: 10px;'><b>🚨 Connection Error</b><br><br><span style='font-family: monospace; font-size: 11px; color: {THEME['error']};'>{str(e)}</span></div>"
+                yield error_bubble
+
+                # 3. Only save the partial good response to DB
+                if complete_response:
+                    role_to_save = "assistant_mcp" if agent_mode else "assistant"
+                    self.append_to_history(
+                        role_to_save,
+                        complete_response,
+                        prompt_tokens=total_prompt_tokens,
+                        completion_tokens=total_completion_tokens,
+                    )
                 break

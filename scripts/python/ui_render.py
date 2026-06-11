@@ -55,7 +55,7 @@ class UIRenderMixin:
         else:
             token_str = str(total_tokens)
 
-        self.usage_label.setText(f"💰 ${total_cost:.4f} · {token_str} tokens")
+        self.usage_label.setText(f"$ {total_cost:.4f} · {token_str} tokens")
 
     def request_render(self):
         self.needs_render = True

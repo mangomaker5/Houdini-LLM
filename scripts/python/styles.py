@@ -10,6 +10,7 @@ THEME = {
     "accent_green": "#19c37d",
     "accent_purple": "#ab68ff",
     "accent_blue": "#3498db",
+    "accent_human": "#e8915a",
     "text_main": "#dfdfdf",
     "text_dim": "#aaaaaa",
     "border_color": "#444444",

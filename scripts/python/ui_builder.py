@@ -84,7 +84,7 @@ class UIBuilderMixin:
             "Current session token usage against the context limit"
         )
 
-        self.usage_label = QtWidgets.QLabel("💰 $0.00 · 0 tokens")
+        self.usage_label = QtWidgets.QLabel("$ 0.00 · 0 tokens")
         self.usage_label.setObjectName("UsageLabel")
         self.usage_label.setFixedHeight(18)
         self.usage_label.setToolTip("Total application API cost and token consumption")

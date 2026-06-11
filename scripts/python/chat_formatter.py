@@ -258,7 +258,7 @@ def build_bubble(
             <tr>
                 <td width="30%"></td>
                 <td align="right">
-                    <div style="font-weight: bold; color: {THEME["accent_blue"]}; margin-bottom: 8px; font-size: 13px;">Human</div>
+                    <div style="font-weight: bold; color: {THEME["accent_human"]}; margin-bottom: 8px; font-size: 13px;">Human</div>
                     <table border="0" cellpadding="14" cellspacing="0" bgcolor="{THEME["bg_human_bubble"]}" style="border-radius: 18px;">
                         <tr>
                             <td align="left" style="color: {THEME["text_main"]}; font-size: 14px; line-height: 1.6;">
