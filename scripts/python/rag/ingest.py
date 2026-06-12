@@ -1,7 +1,6 @@
 import os
 import sys
 import zipfile
-import re
 import argparse
 import sqlite3
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -16,52 +15,6 @@ sys.path.append(
 
 from core import AIAgentCore  # noqa: E402
 from rag.vector_db import insert_houdini_doc  # noqa: E402
-
-
-def clean_wiki_text(text_str):
-    """Safely cleans Houdini Wiki-text markup without destroying Python/VEX code.
-
-    Houdini help .txt files use a custom wiki format with:
-    - #type:, #cppname:, #group:, #context:, #icon: directives
-    - [Hom:hou.Class#method] cross-references
-    - ::`method(self)` -> return_type method signatures
-    - {{{ }}} code blocks
-    - @methods, @parameters, @related section markers
-    - :usage: annotations
-    - :include directives
-    """
-    # Remove carriage returns
-    text_str = re.sub(r"\r\n", "\n", text_str)
-    # Strip metadata directives (lines starting with #type:, #cppname:, etc.)
-    text_str = re.sub(
-        r"^#(type|cppname|superclass|group|context|icon|internal|since|tags|replaces|status)\b.*$",
-        "",
-        text_str,
-        flags=re.MULTILINE,
-    )
-    # Convert cross-references [Hom:hou.Class#method] -> hou.Class.method
-    text_str = re.sub(r"\[Hom:(hou\.[^\]#]+)#([^\]]+)\]", r"\1.\2", text_str)
-    text_str = re.sub(r"\[Hom:(hou\.[^\]]+)\]", r"\1", text_str)
-    # Convert VEX references [Vex:funcname] -> funcname
-    text_str = re.sub(r"\[Vex:([^\]]+)\]", r"\1", text_str)
-    # Convert Node references [Node:context/type] -> context/type
-    text_str = re.sub(r"\[Node:([^\]]+)\]", r"\1", text_str)
-    # Strip :include directives
-    text_str = re.sub(r"^:include\b.*$", "", text_str, flags=re.MULTILINE)
-    # Strip code block delimiters but keep content
-    text_str = text_str.replace("{{{", "").replace("}}}", "")
-    # Clean method definition syntax  ::`method(self)` -> method(self)
-    text_str = re.sub(r"::`([^`]+)`", r"\1", text_str)
-    # Strip section markers but keep as headings
-    text_str = re.sub(
-        r"^@(methods|parameters|related|examples)",
-        r"\n== \1 ==",
-        text_str,
-        flags=re.MULTILINE,
-    )
-    # Remove excessive newlines (more than 2)
-    text_str = re.sub(r"\n{3,}", "\n\n", text_str)
-    return text_str.strip()
 
 
 def ingest_gotchas(core):
@@ -120,7 +73,7 @@ def ingest_zip(core, zip_path, prefix, max_files=None):
                 try:
                     content_bytes = zf.read(f)
                     content_str = content_bytes.decode("utf-8", errors="ignore")
-                    clean_text = clean_wiki_text(content_str)
+                    clean_text = content_str
 
                     if len(clean_text) < 50:
                         continue
@@ -129,7 +82,7 @@ def ingest_zip(core, zip_path, prefix, max_files=None):
                     text_splitter = RecursiveCharacterTextSplitter(
                         chunk_size=1500,
                         chunk_overlap=200,
-                        separators=["\n\n", "\n", " ", ""],
+                        separators=["\n#", "```\n", "\n\n", "\n", " ", ""],
                     )
                     chunks = text_splitter.split_text(clean_text)
 
@@ -210,9 +163,7 @@ def main():
     except Exception:
         pass
 
-    base_help_dir = (
-        r"C:\Program Files\Side Effects Software\Houdini 21.0.440\houdini\help"
-    )
+    base_help_dir = r"D:\dev\applications\Houdini-LLM\data\houdini"
 
     critical_zips = {
         "hom": "hom.zip",
@@ -226,7 +177,7 @@ def main():
         "model": "model.zip",
         "copy": "copy.zip",
         "assets": "assets.zip",
-        "arnold": r"D:\dev\applications\Houdini-LLM\data\arnold.zip",
+        "arnold": r"D:\dev\applications\Houdini-LLM\data\arnold\arnold.zip",
     }
 
     from rag.vector_db import delete_houdini_docs_by_prefix

@@ -1,6 +1,7 @@
 import os
 import zipfile
 import shutil
+import re
 from bs4 import BeautifulSoup
 from markdownify import markdownify as md
 
@@ -25,6 +26,8 @@ def process_html_to_md(html_content):
         unwanted.decompose()
     for unwanted in content_div.find_all(class_="dyncontent"):
         unwanted.decompose()
+    for unwanted in content_div.find_all(class_="memberdecls"):
+        unwanted.decompose()
 
     # Flatten tables into clean readable paragraphs so we don't get ugly markdown pipes (|)
     for table in content_div.find_all("table"):
@@ -44,26 +47,35 @@ def process_html_to_md(html_content):
 
     # Remove ugly Doxygen specific characters
     markdown_text = markdown_text.replace("◆", "").replace("\u25c6", "")
+    markdown_text = markdown_text.replace("\xa0", " ")
+    markdown_text = markdown_text.replace("▼", "")
+    markdown_text = markdown_text.replace("►", "")
 
-    # Clean up excessive newlines
-    lines = markdown_text.split("\n")
-    cleaned_lines = []
-    empty_count = 0
-    for line in lines:
-        if not line.strip():
-            empty_count += 1
-            if empty_count <= 2:
-                cleaned_lines.append(line)
-        else:
-            empty_count = 0
-            cleaned_lines.append(line)
+    # Strip Definition lines (e.g. **Definition:** log.py:1)
+    markdown_text = re.sub(
+        r"\*\*Definition:\*\*.*$", "", markdown_text, flags=re.MULTILINE
+    )
 
-    return "\n".join(cleaned_lines).strip()
+    # Strip Doxygen boilerplate footer ("The documentation for this class was generated from...")
+    markdown_text = re.sub(
+        r"The documentation for this .*? generated from the following file.*",
+        "",
+        markdown_text,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+
+    # Clean up excessive newlines and whitespace
+    # First, trim trailing whitespace on each line that might be hiding empty lines
+    markdown_text = re.sub(r"[ \t]+$", "", markdown_text, flags=re.MULTILINE)
+    # Then, collapse 3 or more consecutive newlines into exactly 2 (which equals one blank line)
+    markdown_text = re.sub(r"\n{3,}", "\n\n", markdown_text)
+
+    return markdown_text.strip()
 
 
 def main():
     input_dir = r"D:\dev\applications\Houdini-LLM\data\htoa-6.4.4.2-doc"
-    output_zip = r"D:\dev\applications\Houdini-LLM\data\arnold.zip"
+    output_zip = r"D:\dev\applications\Houdini-LLM\data\arnold\arnold.zip"
 
     # Create temp directory for text files
     temp_dir = os.path.join(os.path.dirname(output_zip), "temp_htoa_md")
