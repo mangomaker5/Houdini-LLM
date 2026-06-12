@@ -33,7 +33,6 @@ class UIActionsMixin:
         self.model_combo.blockSignals(True)
         models = self.core.fetch_models()
         self.model_combo.addItems(models)
-        self.model_combo.completer().setModel(self.model_combo.model())
         index = self.model_combo.findText(self.core.model)
         if index >= 0:
             self.model_combo.setCurrentIndex(index)
@@ -54,7 +53,6 @@ class UIActionsMixin:
             idx = self.model_combo.findText(self.current_model_display)
             if idx >= 0:
                 self.model_combo.setCurrentIndex(idx)
-            self.model_combo.lineEdit().setText(self.current_model_display)
             self.model_combo.blockSignals(False)
             return
 

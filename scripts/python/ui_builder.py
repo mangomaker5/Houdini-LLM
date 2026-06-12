@@ -48,24 +48,10 @@ class UIBuilderMixin:
         chat_layout.setSpacing(15)
         top_bar = QtWidgets.QHBoxLayout()
         self.model_combo = QtWidgets.QComboBox()
-        self.model_combo.setEditable(True)
-        self.model_combo.setInsertPolicy(QtWidgets.QComboBox.NoInsert)
-        self.model_combo.lineEdit().setPlaceholderText("Search models...")
-        self.model_combo.lineEdit().setAlignment(QtCore.Qt.AlignLeft)
         self.model_combo.setToolTip("Select the LLM model to use")
         self.model_combo.setMinimumWidth(250)
-        self.model_combo.activated.connect(self.on_model_changed)
-        completer = QtWidgets.QCompleter()
-        completer.setFilterMode(QtCore.Qt.MatchContains)
-        completer.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
-        completer.popup().setObjectName("ModelCompleterPopup")
+        self.model_combo.currentIndexChanged.connect(self.on_model_changed)
 
-        from styles import GLOBAL_STYLE
-
-        completer.popup().setStyleSheet(GLOBAL_STYLE)
-
-        self.model_combo.setCompleter(completer)
-        self.model_combo.lineEdit().returnPressed.connect(self.on_model_changed)
         self.settings_btn = QtWidgets.QPushButton("⚙ Settings")
         self.settings_btn.setObjectName("SettingsButton")
         self.settings_btn.setToolTip("Open application settings (API Keys, etc.)")
