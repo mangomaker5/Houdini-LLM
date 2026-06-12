@@ -408,11 +408,20 @@ class AIAgentCore:
                     }
                     request_history.append(assistant_msg)
 
-                    has_inspected = any(
-                        msg.get("role") == "tool"
-                        and msg.get("name") in ["search_memory", "search_api_docs"]
-                        for msg in request_history
-                    )
+                    has_searched = False
+                    has_inspected_scene = False
+
+                    for msg in reversed(request_history):
+                        if msg.get("role") == "user":
+                            break
+                        if msg.get("role") == "tool":
+                            if msg.get("name") in ["search_memory", "search_api_docs"]:
+                                has_searched = True
+                            if msg.get("name") in [
+                                "get_node_parameters",
+                                "analyze_node_type",
+                            ]:
+                                has_inspected_scene = True
 
                     for tc in tool_calls_buffer.values():
                         if check_cancelled and check_cancelled():
@@ -420,7 +429,9 @@ class AIAgentCore:
                         f_name = tc["function"]["name"]
                         f_args = tc["function"]["arguments"]
 
-                        if f_name == "propose_code_change" and not has_inspected:
+                        if f_name == "propose_code_change" and not (
+                            has_searched and has_inspected_scene
+                        ):
                             pipeline_retries += 1
                             if pipeline_retries >= 2:
                                 msg = "\n\n❌ **Agent repeatedly failed to follow the strict inspection pipeline. Halting to save tokens. Please clarify your prompt.**"

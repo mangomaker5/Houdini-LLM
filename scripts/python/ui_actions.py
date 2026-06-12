@@ -44,7 +44,20 @@ class UIActionsMixin:
     def on_model_changed(self):
         if self._loading_models:
             return
+
         new_model = self.model_combo.currentText()
+
+        # Verify it's actually a valid model in the list
+        if self.model_combo.findText(new_model) == -1:
+            # Invalid text typed, revert to the last valid model
+            self.model_combo.blockSignals(True)
+            idx = self.model_combo.findText(self.current_model_display)
+            if idx >= 0:
+                self.model_combo.setCurrentIndex(idx)
+            self.model_combo.lineEdit().setText(self.current_model_display)
+            self.model_combo.blockSignals(False)
+            return
+
         if new_model and new_model != self.current_model_display:
             if self.core.session_id and len(self.core.get_chat_history()) > 0:
                 self.core.append_to_history(

@@ -141,3 +141,31 @@ class CompactWorker(QtCore.QThread):
         except Exception as e:
             print(f"Error in CompactWorker: {str(e)}")
             self.finished_compaction.emit(False, f"Compaction error: {str(e)}")
+
+
+class AntiPatternWorker(QtCore.QThread):
+    def __init__(
+        self, core, error_type, trace, failed_code, fix_description, parent=None
+    ):
+        super().__init__(parent)
+        self.core = core
+        self.error_type = error_type
+        self.trace = trace
+        self.failed_code = failed_code
+        self.fix_description = fix_description
+
+    def run(self):
+        try:
+            from memory_db import save_anti_pattern
+
+            embedding = self.core.generate_embedding(self.trace[:1500])
+            save_anti_pattern(
+                self.core.db_path,
+                self.error_type,
+                self.trace,
+                self.failed_code,
+                self.fix_description,
+                embedding,
+            )
+        except Exception as e:
+            print(f"Failed to log anti-pattern: {e}")

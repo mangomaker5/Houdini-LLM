@@ -345,27 +345,25 @@ class AIAgentUI(
             # --- Anti-Pattern Logging (background thread to avoid UI freeze) ---
             error_type_name = type(e).__name__
             try:
-                import threading
-                from memory_db import save_anti_pattern
+                from workers import AntiPatternWorker
 
-                def _log_anti_pattern(
-                    etype=error_type_name, trace=err_trace, failed_code=code
-                ):
-                    try:
-                        fix_desc = f"Failed with {etype}. Ensure API calls are valid."
-                        embedding = self.core.generate_embedding(trace[:1500])
-                        save_anti_pattern(
-                            self.core.db_path,
-                            etype,
-                            trace,
-                            failed_code,
-                            fix_desc,
-                            embedding,
-                        )
-                    except Exception as ap_inner:
-                        print(f"Failed to log anti-pattern: {ap_inner}")
+                fix_desc = f"Failed with {error_type_name}. Ensure API calls are valid."
+                worker = AntiPatternWorker(
+                    self.core, error_type_name, err_trace, code, fix_desc, self
+                )
+                if not hasattr(self, "anti_pattern_workers"):
+                    self.anti_pattern_workers = []
+                self.anti_pattern_workers.append(worker)
 
-                threading.Thread(target=_log_anti_pattern, daemon=True).start()
+                # Cleanup reference when done
+                worker.finished.connect(
+                    lambda w=worker: (
+                        self.anti_pattern_workers.remove(w)
+                        if w in self.anti_pattern_workers
+                        else None
+                    )
+                )
+                worker.start()
             except Exception as ap_e:
                 print(f"Failed to start anti-pattern logger: {ap_e}")
             # ---------------------------
